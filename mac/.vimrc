@@ -1,5 +1,4 @@
 set nocompatible
-	
 
 "Enable filetypes
 filetype on
@@ -27,7 +26,7 @@ nnoremap <cr> :noh<CR><CR>:<backspace>
 
 "Set the color scheme. Change this to your preference.
 "Here's 100 to choose from: http://www.vim.org/scripts/script.php?script_id=625
-colorscheme mustang
+"colorscheme mustang
 
 "Set font type and size. Depends on the resolution. Larger screens, prefer h20
 set guifont=Menlo:h14
@@ -190,9 +189,9 @@ nmap <leader>bv :bel vsp
 " au FocusLost * :wa
 
 " Backups
-set backupdir=~/.vim/tmp/backup// " backups
-set directory=~/.vim/tmp/swap// " swap files
-set backup " enable backup
+"set backupdir=~/.vim/tmp/backup// " backups
+"set directory=~/.vim/tmp/swap// " swap files
+"set backup " enable backup
 
 " No more stretching for navigating files
 "noremap h ;
@@ -223,24 +222,5 @@ noremap <Up> <NOP>
 noremap <Down> <NOP>
 noremap <Left> <NOP>
 noremap <Right> <NOP>
-
-if has('vim_starting')
-set runtimepath+=~/.vim/bundle/neobundle.vim/
-endif
-
-call neobundle#rc(expand('~/.vim/bundle/'))
-
-" Let NeoBundle manage NeoBundle
-NeoBundleFetch 'Shougo/neobundle.vim'
-
-" Recommended to install
-" After install, turn shell ~/.vim/bundle/vimproc, (n,g)make -f your_machines_makefile
-NeoBundle 'Shougo/vimproc'
-NeoBundle 'bling/vim-airline'
-NeoBundle 'tpope/vim-markdown'
-NeoBundle 'suan/vim-instant-markdown'
-
-filetype plugin indent on     " Required!
-NeoBundleCheck
 
 set laststatus=2
