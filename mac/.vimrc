@@ -1,7 +1,7 @@
 " Use the Solarized Dark theme
-set background=dark
+let g:solarized_termcolors=256
+set background=light
 colorscheme solarized
-let g:solarized_termtrans=1
 
 set nocompatible
 
@@ -18,7 +18,7 @@ set autowrite
 set ruler
 
 "Want a different map leader than \
-"set mapleader = ",";
+let mapleader = ','
 
 "Ever notice a slight lag after typing the leader key + command? This lowers
 "the timeout.
@@ -121,6 +121,9 @@ map <leader>c <c-_><c-_>
 "Saves time; maps the spacebar to colon
 nmap <space> :
 
+" PATHOGEN
+execute pathogen#infect()
+
 "Automatically change current directory to that of the file in the buffer
 autocmd BufEnter * cd %:p:h
 
@@ -183,34 +186,13 @@ nmap <leader>nt :NERDTreeToggle <CR>
 "Show hidden files in NerdTree
 let NERDTreeShowHidden=1
 
-" Alphabetically sort CSS properties in file with :SortCSS
-:command! SortCSS :g#\({\n\)\@<=#.,/}/sort
-
 " Shortcut to opening a virtual split to right of current pane
 " Makes more sense than opening to the left
 nmap <leader>bv :bel vsp
-
-" Saves file when Vim window loses focus
-" au FocusLost * :wa
-
-" Backups
-"set backupdir=~/.vim/tmp/backup// " backups
-"set directory=~/.vim/tmp/swap// " swap files
-"set backup " enable backup
-
-" No more stretching for navigating files
-"noremap h ;
-"noremap j h
-"noremap k gj
-"noremap l gk
-"noremap ; l
-
 set showmatch " show matching brackets
 
 " print empty <a> tag
 map! ;h <a href=""></a><ESC>5hi
-
-" nmap <c-h> :FufHelp<CR>
 
 " standatr copy and paste
 nnoremap <C-y> "+y
