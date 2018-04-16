@@ -1,0 +1,20 @@
+set background=dark
+let g:solarized_termtrans=1
+
+call plug#begin('~/.vim/plugged')
+Plug 'junegunn/goyo.vim'
+Plug 'junegunn/seoul256.vim'
+Plug 'junegunn/limelight.vim'
+Plug 'godlygeek/tabular'
+Plug 'plasticboy/vim-markdown'
+call plug#end()
+
+let g:seoul256_background = 233
+colorscheme seoul256
+
+autocmd VimEnter * Goyo
+autocmd! User GoyoEnter Limelight
+
+let g:vim_markdown_folding_disabled = 1
+
+set langmap=ёйцукенгшщзхъфывапролджэячсмитьбюЁЙЦУКЕHГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ;`qwertyuiop[]asdfghjkl\\;‘zxcvbnm\\,.~QWERTYUIOP{}ASDFGHJKL:\\“ZXCVBNM<>
