@@ -1,11 +1,9 @@
 use std::collections::VecDeque;
+use futures::{Async::Ready, Poll};
+use std::io;
+use tokio_io::AsyncRead;
+use tokio_io::AsyncWrite;
 
-#[derive(Debug)]
-pub struct ByteStream {
-    pub buffer: VecDeque<u8>,
-}
-
-impl ByteStream {}
 
 #[derive(Debug)]
 pub struct Mock {
@@ -18,12 +16,6 @@ pub enum Op {
     Flush,
 }
 
-use self::Op::*;
-use futures::{Async::Ready, Poll};
-use std::io;
-use tokio_io::AsyncRead;
-use tokio_io::AsyncWrite;
-
 fn would_block() -> io::Error {
     io::Error::new(io::ErrorKind::WouldBlock, "would block")
 }
@@ -32,18 +24,11 @@ impl io::Read for Mock {
     fn read(&mut self, dst: &mut [u8]) -> io::Result<usize> {
         match self.calls.pop_front() {
             Some(Ok(Op::Data(data))) => {
-                println!("data {:?}", data);
-                println!("dst.len() {:?}", dst.len());
                 let dst_len = dst.len();
-                //                debug_assert!(dst.len() >= data.len());
-                //                dst[..].copy_from_slice(&data[..dst_len]);
-
                 let (readed, remained) = data.split_at(dst_len);
 
                 dst[..].copy_from_slice(&readed);
-
                 self.calls.push_front(Ok(remained.into()));
-
                 Ok(dst_len)
             }
             Some(Ok(_)) => panic!(),
@@ -62,19 +47,6 @@ impl io::Write for Mock {
         let len = src.len();
         self.calls.push_front(Ok(src.into()));
         Ok(len)
-
-        //        match self.calls.pop_front() {
-        //            Some(Ok(Op::Data(data))) => {
-        //                let len = data.len();
-        //                println!("src {:?}", src);
-        //                assert!(src.len() >= len, "expect={:?}; actual={:?}", data, src);
-        //                assert_eq!(&data[..], &src[..len]);
-        //                Ok(len)
-        //            }
-        //            Some(Ok(_)) => panic!(),
-        //            Some(Err(e)) => Err(e),
-        //            None => Ok(0),
-        //        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
