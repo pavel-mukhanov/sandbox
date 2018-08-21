@@ -1,24 +1,15 @@
-extern crate tokio_io;
-extern crate byteorder;
-extern crate futures;
-
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::collections::VecDeque;
 use byteorder::LittleEndian;
 use byteorder::ByteOrder;
+use futures::Future;
 use std::io;
 use tokio_io::{codec::length_delimited::*,
                io::{read_exact, write_all},
                AsyncRead,
                AsyncWrite};
-use std::sync::Mutex;
-use futures::{Sink, Future};
-use futures::sync::mpsc;
 
-mod byte_stream;
-
-#[derive(Debug)]
 struct Mock {
     data: Arc<RwLock<VecDeque<u8>>>
 }
@@ -30,24 +21,17 @@ impl Mock {
 }
 
 fn main() {
+    let mut mock = Mock { data: Arc::new(RwLock::new(VecDeque::new()))};
 
-    let (rx, tx) = mpsc::channel::<u8>(1);
-
-    let remote_rx = rx.clone();
-//    let remote_tx = tx.clone();
-
-
+    let arc = Arc::new(mock);
+    let local = arc.clone();
+    let remote = arc.clone();
     let handle = thread::spawn(move || {
-
-        remote_rx.send(1);
-//        let mut data = remote.lock().unwrap();
-//        read(*data);
-//        println!("data {:?}", *data);
+        let data = remote.data();
+        read(data)
     });
 
-
-    handle.join().unwrap();
-//    write(local.data(), &vec![0u8; 4], 4);
+    write(local.data(), &vec![0u8; 4], 4);
 }
 
 
@@ -68,4 +52,9 @@ fn write<S: AsyncWrite + 'static>(
     LittleEndian::write_u16(&mut message, len as u16);
     message.extend_from_slice(&buf[0..len]);
     write_all(sock, message)
+}
+
+#[test]
+fn test_rwlock() {
+    main()
 }
