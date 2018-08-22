@@ -1,13 +1,14 @@
 use futures::prelude::*;
 use log_error;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock, atomic::AtomicUsize};
 use std::thread;
 use std::time::Duration;
 use tokio;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
+use std::sync::atomic::Ordering;
+use std::collections::BTreeMap;
 
 pub struct PublicKey([u8]);
 
@@ -20,33 +21,37 @@ pub struct ConnectInfo {
 
 #[derive(Clone, Debug)]
 pub struct ConnectionPool {
-    connections: Arc<RwLock<Vec<Connection>>>,
+    id: Arc<AtomicUsize>,
+    connections: Arc<RwLock<BTreeMap<usize, Connection>>>,
 }
 
 impl ConnectionPool {
     pub fn new() -> Self {
         ConnectionPool {
-            connections: Arc::new(RwLock::new(Vec::new())),
+            id: Arc::new(AtomicUsize::new(0)),
+            connections: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
     pub fn add(&self, connection: Connection) {
+        let new_id = self.id.fetch_add(1, Ordering::Relaxed);
+
         let mut connections = self.connections.write().expect("ConnectionPool write lock");
-        connections.push(connection);
+        connections.insert(new_id, connection);
     }
 }
 
 #[derive(Debug)]
 pub struct Connection {
-    local: SocketAddr,
-    remote: SocketAddr,
+    from: SocketAddr,
+    to: SocketAddr,
 }
 
 impl Connection {
     fn new(local: &SocketAddr, remote: &SocketAddr) -> Self {
         Connection {
-            local: *local,
-            remote: *remote,
+            from: *local,
+            to: *remote,
         }
     }
 }
@@ -55,47 +60,74 @@ impl Connection {
 fn test_connect() {
     println!("test connect!");
 
-    let address = "127.0.0.1:8000".parse().unwrap();
-
+    let address1 = "127.0.0.1:8000".parse().unwrap();
+    let address2 = "127.0.0.1:9000".parse().unwrap();
     let connection_pool = ConnectionPool::new();
-    let pool1 = connection_pool.clone();
 
-    thread::spawn(move || {
-        let server = TcpListener::bind(&address)
-            .unwrap()
-            .incoming()
-            .for_each(move |sock| {
-                println!("received connect from {:?}", sock);
-                pool1.add(Connection::new(
+    let node1 = Node::new(connection_pool.clone());
+    let node2 = Node::new(connection_pool.clone());
+
+    node1.listen(&address1);
+    node2.listen(&address2);
+    thread::sleep(Duration::from_millis(200));
+
+    node2.connect(&address1);
+    node2.connect(&address1);
+
+    println!("pool {:#?}", connection_pool);
+}
+
+struct Node {
+    connection_pool: ConnectionPool,
+}
+
+impl Node {
+
+    fn new(connection_pool: ConnectionPool) -> Self {
+        Node {
+            connection_pool
+        }
+    }
+
+    fn listen(&self, address: &SocketAddr) {
+        let address = address.clone();
+        let pool = self.connection_pool.clone();
+
+        thread::spawn(move || {
+            let server = TcpListener::bind(&address)
+                .unwrap()
+                .incoming()
+                .for_each(move |sock| {
+                    println!("received connect from {:?}", sock.peer_addr());
+                    pool.add(Connection::new(
+                        &sock.peer_addr().unwrap(),
+                        &sock.local_addr().unwrap(),
+                    ));
+
+                    Ok(())
+                })
+                .map_err(log_error);
+
+            tokio::run(server);
+        });
+    }
+
+    fn connect(&self, address: &SocketAddr) {
+        let address = address.clone();
+        let pool = self.connection_pool.clone();
+
+        let connect = TcpStream::connect(&address)
+            .and_then(move |sock| {
+                println!("connected to {:?}", sock.peer_addr());
+
+                pool.add(Connection::new(
                     &sock.local_addr().unwrap(),
                     &sock.peer_addr().unwrap(),
                 ));
-                println!("pool {:?}", pool1);
-
                 Ok(())
             })
             .map_err(log_error);
 
-        tokio::run(server);
-    });
-
-    let local_address = address.clone();
-    let pool2 = connection_pool.clone();
-
-    thread::sleep(Duration::from_millis(200));
-
-    let connect = TcpStream::connect(&local_address)
-        .and_then(move |sock| {
-            println!("connected to {:?}", sock);
-            pool2.add(Connection::new(
-                &sock.peer_addr().unwrap(),
-                &sock.local_addr().unwrap(),
-            ));
-            Ok(())
-        })
-        .map_err(log_error);
-
-    tokio::run(connect);
-
-    println!("pool {:?}", connection_pool);
+        tokio::run(connect);
+    }
 }
