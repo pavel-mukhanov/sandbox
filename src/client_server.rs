@@ -7,8 +7,8 @@ use std::time::Duration;
 use tokio;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use std::sync::atomic::Ordering;
-use std::collections::BTreeMap;
+use std::{hash::{Hash, Hasher}, sync::atomic::Ordering};
+use std::collections::{BTreeMap, hash_map::DefaultHasher};
 
 pub struct PublicKey([u8]);
 
@@ -22,7 +22,7 @@ pub struct ConnectInfo {
 #[derive(Clone, Debug)]
 pub struct ConnectionPool {
     id: Arc<AtomicUsize>,
-    connections: Arc<RwLock<BTreeMap<usize, Connection>>>,
+    connections: Arc<RwLock<BTreeMap<u64, Connection>>>,
 }
 
 impl ConnectionPool {
@@ -36,12 +36,24 @@ impl ConnectionPool {
     pub fn add(&self, connection: Connection) {
         let new_id = self.id.fetch_add(1, Ordering::Relaxed);
 
+        let mut s = DefaultHasher::new();
+
+        connection.hash(&mut s);
+//        let hash = s.finish();
+        let hash = new_id as u64;
+
+        println!("hash {:?}", hash);
+
         let mut connections = self.connections.write().expect("ConnectionPool write lock");
-        connections.insert(new_id, connection);
+        connections.insert(hash, connection);
+    }
+
+    pub fn size(&self) -> usize {
+        self.connections.read().unwrap().len()
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct Connection {
     from: SocketAddr,
     to: SocketAddr,
@@ -73,7 +85,9 @@ fn test_connect() {
 
     node2.connect(&address1);
     node2.connect(&address1);
+    node1.connect(&address2);
 
+    println!("pool len {}", connection_pool.size());
     println!("pool {:#?}", connection_pool);
 }
 
