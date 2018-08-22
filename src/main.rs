@@ -3,7 +3,6 @@
 extern crate tokio_io;
 extern crate byteorder;
 extern crate futures;
-extern crate tokio_core;
 extern crate partial_io;
 extern crate tokio;
 extern crate num;
@@ -23,13 +22,13 @@ use futures::{Sink, Future};
 use futures::sync::mpsc;
 use queue::FixedQueue;
 use futures::{Async::Ready, Poll};
-use tokio_core::reactor::Core;
+use std::{error::Error as StdError};
 
 mod byte_stream;
 mod queue;
 mod rwlock_test;
-mod async_await;
 mod timer;
+mod client_server;
 
 #[derive(Debug)]
 struct Mock {
@@ -92,22 +91,17 @@ fn main() {
     let handle = thread::spawn(move || {
         let mock = Mock { queue: remote };
 
-        let mut core = Core::new().unwrap();
 
-        core.run(write(mock, &vec![5u8; 1], 1));
+        tokio::run(write(mock, &vec![5u8; 1], 1).map(drop).map_err(log_error));
     });
 
 
     handle.join().unwrap();
 
-    let mut core = Core::new().unwrap();
-
     let mock = Mock {queue:local};
 
-    let res = core.run(read(mock));
+    tokio::run(read(mock).map(drop).map_err(log_error));
 
-    println!("res {:?}", res);
-//    write(local.data(), &vec![0u8; 4], 4);
 }
 
 
@@ -128,4 +122,18 @@ fn write<S: AsyncWrite + 'static>(
     LittleEndian::write_u16(&mut message, len as u16);
     message.extend_from_slice(&buf[0..len]);
     write_all(sock, message)
+}
+
+pub fn into_other<E: StdError>(err: E) -> io::Error {
+    other_error(&format!("An error occurred, {}", err.description()))
+}
+
+
+
+pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, s.as_ref())
+}
+
+pub fn log_error<E: StdError>(err: E) {
+    eprintln!("An error occurred: {}", err)
 }

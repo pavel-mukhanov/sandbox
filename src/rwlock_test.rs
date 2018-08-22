@@ -13,7 +13,8 @@ use futures::{Sink, Future};
 use futures::sync::mpsc;
 use queue::FixedQueue;
 use futures::{Async::Ready, Async::NotReady, Poll};
-use tokio_core::reactor::Core;
+use log_error;
+use tokio;
 
 #[derive(Debug)]
 struct MockStream {
@@ -73,26 +74,24 @@ fn main() {
 
     let handle = thread::spawn(move || {
         let mock = MockStream { pos: 0, queue: remote };
-        let mut core = Core::new().unwrap();
-        core.run(write(mock, &vec![5u8; 1], 1).and_then(|(mock, msg)| {
+        tokio::run(write(mock, &vec![5u8; 1], 1).and_then(|(mock, msg)| {
             read(mock)
-        }));
+        }).map(drop).map_err(log_error));
     });
 
 
 //    handle.join().unwrap();
 
-    let mut core = Core::new().unwrap();
 
     let mock = MockStream { pos: 0, queue: local };
 
     let reader = read(mock).and_then(|(mock, msg)| {
         write(mock, &vec![10u8; 1], 1)
-    });
+    }).map(drop).map_err(log_error);
 
-    let res = core.run(reader);
+    tokio::run(reader);
 
-    println!("res {:?}", res.unwrap().0);
+//    println!("res {:?}", res.unwrap().0);
 //    write(local.data(), &vec![0u8; 4], 4);
 }
 
