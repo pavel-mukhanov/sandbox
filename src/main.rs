@@ -15,26 +15,35 @@ use std::thread;
 use tokio_io::{
     io::{read_exact, write_all}, AsyncRead, AsyncWrite,
 };
+use codecs::Node;
+use std::io::{Read, BufRead};
+use codecs::log_error;
 
-mod byte_stream;
 mod codecs;
 
-}
 
 fn main() {
-    let (rx, tx) = mpsc::channel::<u8>(1);
 
-    let remote_rx = rx.clone();
-    //    let remote_tx = tx.clone();
+    let address = "127.0.0.1:8000".parse().unwrap();
 
-    let handle = thread::spawn(move || {
-        remote_rx.send(1);
-        //        let mut data = remote.lock().unwrap();
-        //        read(*data);
-        //        println!("data {:?}", *data);
+    let listen_address = address;
+    thread::spawn(move || {
+        let node = Node::new(listen_address);
+        node.listen();
     });
 
-    handle.join().unwrap();
-    //    write(local.data(), &vec![0u8; 4], 4);
+    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+
+
+    thread::spawn(move || {
+        let node2 = Node::new(address);
+        node2.connect(&address, receiver_rx);
+    });
+
+    let stdin = io::stdin();
+    for line in stdin.lock().lines() {
+        sender_tx.clone().send(line.unwrap()).wait();
+    }
+
 }
 

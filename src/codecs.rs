@@ -12,6 +12,7 @@ use tokio;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_io::codec::{Decoder, Encoder, Framed};
 use tokio_io::{codec::LinesCodec, AsyncRead, AsyncWrite};
+use std::fmt::Display;
 
 #[test]
 fn test_connect() {
@@ -25,10 +26,18 @@ fn test_connect() {
 
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
+
+
+    thread::spawn(move || {
+        let node2 = Node::new(address);
+        node2.connect(&address, receiver_rx);
+    });
+
+
     sender_tx.send("item".to_string()).wait();
 
-    let node2 = Node::new(address);
-    node2.connect(&address, receiver_rx);
+
+    thread::sleep(Duration::from_millis(500));
 }
 
 #[test]
@@ -48,7 +57,7 @@ fn test_receiver() {
 
 }
 
-struct Node {
+pub struct Node {
     address: SocketAddr,
     tx: mpsc::Sender<String>,
     rx: Arc<mpsc::Receiver<String>>,
@@ -111,21 +120,11 @@ impl Node {
     ) -> Box<dyn Future<Item = (), Error = ()> + Send> {
 
         let address = address.clone();
-
-
             let fut = TcpStream::connect(&address)
                 .and_then(move |sock| {
                     println!("connected to {:?}", sock);
 
                     let (sink, stream) = sock.framed(LinesCodec::new()).split();
-
-                    let sender = receiver_rx
-                        .map_err(|e| other_error(""))
-                        .forward(sink)
-                        .map(drop)
-                        .map_err(|e| println!(""));
-
-                    tokio::spawn(sender);
 
                     let fut = stream
                         .for_each(|line| {
@@ -138,6 +137,17 @@ impl Node {
 
                     tokio::spawn(fut);
 
+                    Ok((sink))
+                })
+                .and_then(|sink| {
+                    println!("receiver_rx to {:?}", sink);
+                    let sender = receiver_rx
+                        .map_err(|e| other_error("error! "))
+                        .forward(sink)
+                        .map(drop)
+                        .map_err(|e| println!("error!"));
+
+                    tokio::spawn(sender);
                     Ok(())
                 })
                 .map_err(|e| println!("error happened {:?}", e));
@@ -156,6 +166,10 @@ pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
 
 pub fn into_other<E: StdError>(err: E) -> io::Error {
     other_error(&format!("An error occurred, {}", err.description()))
+}
+
+pub fn log_error<E: Display>(error: E) {
+    println!("An error occurred: {}", error)
 }
 
 struct BadCodecs {}

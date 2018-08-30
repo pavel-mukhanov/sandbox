@@ -15,4 +15,3 @@ rand = "0.5.0-pre.0"
 partial-io = { version = "0.3", features = ["tokio"] }
 byteorder = "1"
 num = "0.2.0"
-tokio = "0.1.7"
