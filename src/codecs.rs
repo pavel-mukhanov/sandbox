@@ -4,6 +4,7 @@ use bytes::BytesMut;
 use futures::prelude::*;
 use futures::stream;
 use futures::sync::mpsc;
+use std::fmt::Display;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -12,7 +13,6 @@ use tokio;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_io::codec::{Decoder, Encoder, Framed};
 use tokio_io::{codec::LinesCodec, AsyncRead, AsyncWrite};
-use std::fmt::Display;
 
 #[test]
 fn test_connect() {
@@ -26,23 +26,18 @@ fn test_connect() {
 
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
-
-
     thread::spawn(move || {
         let node2 = Node::new(address);
         node2.connect(&address, receiver_rx);
     });
 
-
     sender_tx.send("item".to_string()).wait();
-
 
     thread::sleep(Duration::from_millis(500));
 }
 
 #[test]
 fn test_receiver() {
-
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
     sender_tx.send("String".to_string());
@@ -52,9 +47,7 @@ fn test_receiver() {
         Ok(())
     });
 
-
     tokio::run(fut);
-
 }
 
 pub struct Node {
@@ -107,8 +100,7 @@ impl Node {
     }
 
     pub fn connect(&self, address: &SocketAddr, receiver_rx: mpsc::Receiver<String>) {
-        let receiver_fut =
-            self.connect_handle(&address, receiver_rx);
+        let receiver_fut = self.connect_handle(&address, receiver_rx);
 
         tokio::run(receiver_fut);
     }
@@ -118,39 +110,38 @@ impl Node {
         address: &SocketAddr,
         receiver_rx: mpsc::Receiver<String>,
     ) -> Box<dyn Future<Item = (), Error = ()> + Send> {
-
         let address = address.clone();
-            let fut = TcpStream::connect(&address)
-                .and_then(move |sock| {
-                    println!("connected to {:?}", sock);
+        let fut = TcpStream::connect(&address)
+            .and_then(move |sock| {
+                println!("connected to {:?}", sock);
 
-                    let (sink, stream) = sock.framed(LinesCodec::new()).split();
+                let (sink, stream) = sock.framed(LinesCodec::new()).split();
 
-                    let fut = stream
-                        .for_each(|line| {
-                            println!("Received line {}", line);
-                            Ok(())
-                        })
-                        .map_err(|e| println!("e {:?}", e))
-                        .into_future()
-                        .map(drop);
+                let fut = stream
+                    .for_each(|line| {
+                        println!("Received line {}", line);
+                        Ok(())
+                    })
+                    .map_err(|e| println!("e {:?}", e))
+                    .into_future()
+                    .map(drop);
 
-                    tokio::spawn(fut);
+                tokio::spawn(fut);
 
-                    Ok((sink))
-                })
-                .and_then(|sink| {
-                    println!("receiver_rx to {:?}", sink);
-                    let sender = receiver_rx
-                        .map_err(|e| other_error("error! "))
-                        .forward(sink)
-                        .map(drop)
-                        .map_err(|e| println!("error!"));
+                Ok((sink))
+            })
+            .and_then(|sink| {
+                println!("receiver_rx to {:?}", sink);
+                let sender = receiver_rx
+                    .map_err(|e| other_error("error! "))
+                    .forward(sink)
+                    .map(drop)
+                    .map_err(|e| println!("error!"));
 
-                    tokio::spawn(sender);
-                    Ok(())
-                })
-                .map_err(|e| println!("error happened {:?}", e));
+                tokio::spawn(sender);
+                Ok(())
+            })
+            .map_err(|e| println!("error happened {:?}", e));
 
         Box::new(fut)
     }
