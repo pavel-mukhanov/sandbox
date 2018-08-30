@@ -1,9 +1,8 @@
-use std::collections::VecDeque;
 use futures::{Async::Ready, Poll};
+use std::collections::VecDeque;
 use std::io;
 use tokio_io::AsyncRead;
 use tokio_io::AsyncWrite;
-
 
 #[derive(Debug)]
 pub struct Mock {
