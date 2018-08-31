@@ -6,7 +6,6 @@ authors = ["pavelmukhanov"]
 [dependencies]
 futures = "0.1"
 tokio-timer = "0.2.5"
-tokio-io = "0.1"
 env_logger = "0.4.1"
 log = "0.3.6"
 rand = "0.5.0-pre.0"
@@ -14,3 +13,6 @@ partial-io = { version = "0.3", features = ["tokio"] }
 byteorder = "1"
 num = "0.2.0"
 tokio = "0.1.7"
+tokio-codec = "0.1.0"
+bytes = "0.4.9"
+clap = "2.32.0"

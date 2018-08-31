@@ -1,54 +1,52 @@
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
 
 extern crate byteorder;
+extern crate bytes;
+extern crate clap;
 extern crate futures;
 extern crate num;
 extern crate partial_io;
 extern crate tokio;
-extern crate tokio_io;
+extern crate tokio_codec;
 
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
+use clap::App;
+use client_server::ConnectionPool;
+use client_server::Node;
 use futures::sync::mpsc;
 use futures::{Async::Ready, Poll};
 use futures::{Future, Sink};
 use std::collections::VecDeque;
 use std::error::Error as StdError;
 use std::io;
+use std::net::SocketAddr;
 use std::sync::Mutex;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use tokio_io::{
-    codec::length_delimited::*, io::{read_exact, write_all}, AsyncRead, AsyncWrite,
-};
 
+mod bytes_take;
 mod client_server;
-mod rwlock_test;
 mod timer;
 
-fn main() {}
+fn main() {
+    let matches = App::new("simple")
+        .args_from_usage("-s --server 'Server mode'")
+        .get_matches();
 
-pub fn read<S: AsyncRead + 'static>(
-    sock: S,
-) -> impl Future<Item = (S, Vec<u8>), Error = io::Error> {
-    let buf = vec![0u8; 4];
-    read_exact(sock, buf).and_then(|(stream, msg)| read_exact(stream, vec![0u8; msg[0] as usize]))
-}
+    let address1 = "127.0.0.1:8000".parse().unwrap();
+    let address2: SocketAddr = "127.0.0.1:9000".parse().unwrap();
+    let connection_pool = ConnectionPool::new();
 
-fn write<S: AsyncWrite + 'static>(
-    sock: S,
-    buf: &[u8],
-    len: usize,
-) -> impl Future<Item = (S, Vec<u8>), Error = io::Error> {
-    let mut message = vec![0u8; 4];
-
-    LittleEndian::write_u16(&mut message, len as u16);
-    message.extend_from_slice(&buf[0..len]);
-    write_all(sock, message)
-}
-
-pub fn into_other<E: StdError>(err: E) -> io::Error {
-    other_error(&format!("An error occurred, {}", err.description()))
+    if matches.is_present("server") {
+        println!("server");
+        let node1 = Node::new(connection_pool.clone());
+        node1.listen(&address1);
+    } else {
+        println!("client");
+        let node2 = Node::new(connection_pool.clone());
+        node2.connect(&address1);
+    }
 }
 
 pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
