@@ -1,58 +1,62 @@
-#![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
-
 extern crate byteorder;
 extern crate bytes;
-extern crate clap;
 extern crate futures;
-extern crate num;
-extern crate partial_io;
 extern crate tokio;
-extern crate tokio_codec;
+extern crate tokio_io;
+
+extern crate clap;
+
+use clap::App;
 
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
-use clap::App;
-use client_server::ConnectionPool;
-use client_server::Node;
+use codecs::log_error;
+use codecs::Node;
 use futures::sync::mpsc;
-use futures::{Async::Ready, Poll};
 use futures::{Future, Sink};
 use std::collections::VecDeque;
-use std::error::Error as StdError;
 use std::io;
+use std::io::{BufRead, Read};
 use std::net::SocketAddr;
-use std::sync::Mutex;
 use std::sync::{Arc, RwLock};
 use std::thread;
+use tokio_io::{
+    io::{read_exact, write_all}, AsyncRead, AsyncWrite,
+};
 
-mod bytes_take;
-mod client_server;
-mod timer;
+mod codecs;
 
 fn main() {
     let matches = App::new("simple")
         .args_from_usage("-s --server 'Server mode'")
         .get_matches();
 
-    let address1 = "127.0.0.1:8000".parse().unwrap();
-    let address2: SocketAddr = "127.0.0.1:9000".parse().unwrap();
-    let connection_pool = ConnectionPool::new();
+    let address = &"127.0.0.1:8000".parse().unwrap();
 
     if matches.is_present("server") {
-        println!("server");
-        let node1 = Node::new(connection_pool.clone());
-        node1.listen(&address1);
+        run_server(address);
     } else {
-        println!("client");
-        let node2 = Node::new(connection_pool.clone());
-        node2.connect(&address1);
+        run_client(address);
     }
 }
 
-pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, s.as_ref())
+fn run_server(address: &SocketAddr) {
+    let address = address.clone();
+    let node = Node::new(address);
+    node.listen();
 }
 
-pub fn log_error<E: StdError>(err: E) {
-    eprintln!("An error occurred: {}", err)
+fn run_client(address: &SocketAddr) {
+    let address = address.clone();
+    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+
+    thread::spawn(move || {
+        let node2 = Node::new(address);
+        node2.connect(&address, receiver_rx);
+    });
+
+    let stdin = io::stdin();
+    for line in stdin.lock().lines() {
+        sender_tx.clone().send(line.unwrap()).wait();
+    }
 }
