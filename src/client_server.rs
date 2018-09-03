@@ -7,7 +7,8 @@ use std::sync::{atomic::AtomicUsize, Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::{
-    hash::{Hash, Hasher}, sync::atomic::Ordering,
+    hash::{Hash, Hasher},
+    sync::atomic::Ordering,
 };
 use tokio;
 use tokio::io::{self, AsyncRead, AsyncWrite};
@@ -65,7 +66,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    fn new(local: &SocketAddr, remote: &SocketAddr) -> Self {
+    pub fn new(local: &SocketAddr, remote: &SocketAddr) -> Self {
         Connection {
             from: *local,
             to: *remote,
@@ -184,7 +185,10 @@ fn gen_lines(n: usize) -> Vec<Result<String, io::Error>> {
     let mut res = vec![];
 
     for i in 0..n {
-        res.push(Ok(format!("line line line line line line line line line line line line {}", i)));
+        res.push(Ok(format!(
+            "line line line line line line line line line line line line {}",
+            i
+        )));
     }
 
     res
