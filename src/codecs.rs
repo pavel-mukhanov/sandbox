@@ -13,15 +13,18 @@ use tokio;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_io::codec::{Decoder, Encoder, Framed};
 use tokio_io::{codec::LinesCodec, AsyncRead, AsyncWrite};
+use std::collections::HashMap;
 
 #[test]
 fn test_connect() {
     let address = "127.0.0.1:8000".parse().unwrap();
 
+    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+
     let listen_address = address;
     thread::spawn(move || {
         let node = Node::new(listen_address);
-        node.listen();
+        node.listen(receiver_rx);
     });
 
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
@@ -50,35 +53,41 @@ fn test_receiver() {
     tokio::run(fut);
 }
 
+pub struct ConnectStream {
+    pub stream: dyn Stream<Item = String, Error = io::Error>,
+}
+
+pub struct ConnectSink {
+    pub sink: dyn Sink<SinkItem = String, SinkError = io::Error>,
+}
+
+pub struct ConnectionPool {
+    pub peers: HashMap<SocketAddr, (ConnectSink, ConnectStream)>
+}
+
 pub struct Node {
     address: SocketAddr,
-    tx: mpsc::Sender<String>,
-    rx: Arc<mpsc::Receiver<String>>,
 }
 
 impl Node {
     pub fn new(address: SocketAddr) -> Self {
-        let (tx, rx) = mpsc::channel::<String>(1024);
         Node {
             address,
-            tx,
-            rx: Arc::new(rx),
         }
     }
 
-    pub fn listen(&self) {
+    pub fn listen(&self, receiver_rx: mpsc::Receiver<String>) {
         let server = TcpListener::bind(&self.address).unwrap().incoming();
 
         let fut = server
             .for_each(|incoming_connection| {
                 println!("connected from {:?}", incoming_connection);
-
                 let (sink, stream) = incoming_connection.framed(LinesCodec::new()).split();
 
                 let sender = sink.send("line for client".to_string())
                     .into_future()
                     .map(drop)
-                    .map_err(|e| println!(""));
+                    .map_err(|e| println!("error!"));
 
                 let fut = stream
                     .for_each(|line| {
@@ -90,7 +99,6 @@ impl Node {
                     .map(drop);
 
                 tokio::spawn(fut);
-
                 tokio::spawn(sender);
                 Ok(())
             })
@@ -145,22 +153,6 @@ impl Node {
 
         Box::new(fut)
     }
-
-    pub fn send(&self, message: String) {
-        self.tx.clone().send(message);
-    }
-}
-
-pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, s.as_ref())
-}
-
-pub fn into_other<E: StdError>(err: E) -> io::Error {
-    other_error(&format!("An error occurred, {}", err.description()))
-}
-
-pub fn log_error<E: Display>(error: E) {
-    println!("An error occurred: {}", error)
 }
 
 struct BadCodecs {}
@@ -194,4 +186,16 @@ impl Encoder for BadCodecs {
     ) -> Result<(), <Self as Encoder>::Error> {
         Ok(())
     }
+}
+
+pub fn other_error<S: AsRef<str>>(s: S) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, s.as_ref())
+}
+
+pub fn into_other<E: StdError>(err: E) -> io::Error {
+    other_error(&format!("An error occurred, {}", err.description()))
+}
+
+pub fn log_error<E: Display>(error: E) {
+    println!("An error occurred: {}", error)
 }

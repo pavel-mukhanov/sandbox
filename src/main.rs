@@ -41,8 +41,20 @@ fn main() {
 
 fn run_server(address: &SocketAddr) {
     let address = address.clone();
+
+    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+
+    thread::spawn(move || {
+        let node = Node::new(address);
+        node.listen(receiver_rx);
+    });
+
     let node = Node::new(address);
-    node.listen();
+
+    let stdin = io::stdin();
+    for line in stdin.lock().lines() {
+        sender_tx.clone().send(line.unwrap()).wait();
+    }
 }
 
 fn run_client(address: &SocketAddr) {
