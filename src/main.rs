@@ -7,6 +7,9 @@ extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_retry;
 
+#[macro_use]
+extern crate lazy_static;
+
 use clap::App;
 
 use byteorder::ByteOrder;
@@ -25,8 +28,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use tokio_io::{
-    io::{read_exact, write_all},
-    AsyncRead, AsyncWrite,
+    io::{read_exact, write_all}, AsyncRead, AsyncWrite,
 };
 
 mod client_server;
@@ -49,32 +51,26 @@ fn main() {
 fn run_node(listen_address: SocketAddr, remote_address: SocketAddr, pool: ConnectionPool) {
     let listen_address = listen_address.clone();
     let remote_address = remote_address.clone();
-    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+    let (connect_sender_tx, connect_receiver_rx) = mpsc::channel::<String>(1024);
     let (remote_sender_tx, remote_receiver_rx) = mpsc::channel::<String>(1024);
+    let (listen_sender_tx, listen_receiver_rx) = mpsc::channel::<String>(1024);
 
     let node = Node::new(listen_address, pool);
     let connector = node.clone();
 
     thread::spawn(move || {
-        connector.connect(&remote_address, remote_sender_tx, receiver_rx);
+        connector.connect(&remote_address, remote_sender_tx, connect_receiver_rx);
     });
 
     let listener = node.clone();
     thread::spawn(move || {
-        listener.listen();
-    });
-
-    thread::spawn(move || {
-        let fut = remote_receiver_rx.for_each(|line| {
-            println!("received line {}", line);
-            Ok(())
-        });
-
-        tokio::run(fut);
+        listener.listen(listen_receiver_rx);
     });
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
-        sender_tx.clone().send(line.unwrap()).wait();
+        let line = line.unwrap();
+        connect_sender_tx.clone().send(line.clone()).wait();
+        listen_sender_tx.clone().send(line).wait();
     }
 }

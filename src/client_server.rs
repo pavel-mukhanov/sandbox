@@ -7,8 +7,7 @@ use std::sync::{atomic::AtomicUsize, Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use std::{
-    hash::{Hash, Hasher},
-    sync::atomic::Ordering,
+    hash::{Hash, Hasher}, sync::atomic::Ordering,
 };
 use tokio;
 use tokio::io::{self, AsyncRead, AsyncWrite};

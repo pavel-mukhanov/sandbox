@@ -6,20 +6,30 @@ use client_server::ConnectionPool;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 use futures::sync::mpsc;
+use std::borrow::ToOwned;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 use std::{error::Error as StdError, io};
 use tokio;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::prelude::stream::SplitSink;
 use tokio_io::codec::{Decoder, Encoder, Framed};
 use tokio_io::{codec::LinesCodec, AsyncRead, AsyncWrite};
 use tokio_retry::{
-    strategy::{jitter, FixedInterval},
-    Retry,
+    strategy::{jitter, FixedInterval}, Retry,
 };
+
+use std::sync::Mutex;
+
+lazy_static! {
+    static ref POOL: Mutex<HashMap<SocketAddr, mpsc::Sender<String>>> = Mutex::new(HashMap::new());
+}
+
+type FramedSink = SplitSink<Framed<TcpStream, LinesCodec>>;
 
 #[test]
 fn test_connect() {
@@ -76,50 +86,86 @@ impl Node {
         }
     }
 
-    pub fn listen(&self) {
+    pub fn listen(&self, receiver_rx: mpsc::Receiver<String>) {
         let server = TcpListener::bind(&self.address).unwrap().incoming();
 
         let pool = self.connection_pool.clone();
+
+        let mut connection_counter = 0;
 
         let fut = server
             .for_each(move |incoming_connection| {
                 println!("connected from {:?}", incoming_connection);
 
-                pool.add(Connection::new(
-                    &incoming_connection.peer_addr().unwrap(),
-                    &incoming_connection.local_addr().unwrap(),
-                ));
+                connection_counter += 1;
 
-                let (sink, stream) = incoming_connection.framed(LinesCodec::new()).split();
-                let sender = sink
-                    .send("line one for client".to_string())
-                    .into_future()
-                    .map(drop)
-                    .map_err(|e| println!("error!"));
-
-                let pool = pool.clone();
-
-                let fut = stream
-                    .for_each(move |line| {
-                        println!("Received line {}", line);
-
-                        if line == "/pool" {
-                            println!("pool {:#?}", pool);
-                        }
-
-                        Ok(())
-                    })
-                    .map_err(|e| println!("e {:?}", e))
-                    .into_future()
-                    .map(drop);
-
-                tokio::spawn(fut);
-                tokio::spawn(sender);
-                Ok(())
+                Self::process_connection(incoming_connection)
             })
             .map_err(|e| println!("error happened {:?}", e));
 
+        Self::process_pool(receiver_rx);
+
         tokio::run(fut);
+    }
+
+    fn process_pool(receiver_rx: mpsc::Receiver<String>) {
+        thread::spawn(move || {
+            let mut pool_len = 0;
+            let sender = receiver_rx.for_each(move |message| {
+                let mut write_pool = POOL.lock().unwrap();
+                let sender_tx: Vec<mpsc::Sender<String>> = write_pool.values().cloned().collect();
+
+                sender_tx.iter().for_each(move |sen| {
+                    let fut = sen.clone()
+                        .send(message.clone())
+                        .map(drop)
+                        .map_err(|e| {
+
+                            log_error(e);
+                        });
+                    tokio::spawn(fut);
+                });
+
+                Ok(())
+            });
+            tokio::run(sender);
+        });
+    }
+
+    fn process_connection(connection: TcpStream) -> Result<(), io::Error> {
+        let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
+        //
+        //        pool.add(Connection::new(
+        //            &incoming_connection.peer_addr().unwrap(),
+        //            &incoming_connection.local_addr().unwrap(),
+        //        ));
+
+        let peer_addr = connection.peer_addr().unwrap();
+        let (sink, stream) = connection.framed(LinesCodec::new()).split();
+
+        let sender = receiver_rx
+            .filter(|line| !line.is_empty())
+            .map_err(|e| other_error("error! "))
+            .forward(sink)
+            .map(drop)
+            .map_err(|e| println!("error!"));
+
+        let mut pool = POOL.lock().unwrap();
+        pool.insert(peer_addr, sender_tx);
+
+        let fut = stream
+            .for_each(move |line| {
+                println!("Received line {}", line);
+
+                Ok(())
+            })
+            .map_err(|e| println!("e {:?}", e))
+            .into_future()
+            .map(drop);
+
+        tokio::spawn(fut);
+        tokio::spawn(sender);
+        Ok(())
     }
 
     pub fn connect(
@@ -129,7 +175,7 @@ impl Node {
         receiver_rx: mpsc::Receiver<String>,
     ) {
         let address = address.clone();
-        let timeout = 5000;
+        let timeout = 1000;
         let max_tries = 5000;
         let strategy = FixedInterval::from_millis(timeout)
             .map(jitter)
@@ -141,40 +187,27 @@ impl Node {
         let sender_tx = remote_sender_tx.clone();
 
         let future = Retry::spawn(strategy, action)
-            .and_then(move |sock| {
+            .map_err(into_other)
+            .and_then(move |outgoing_connection| {
                 pool.add(Connection::new(
-                    &sock.local_addr().unwrap(),
-                    &sock.peer_addr().unwrap(),
+                    &outgoing_connection.local_addr().unwrap(),
+                    &outgoing_connection.peer_addr().unwrap(),
                 ));
-                let (sink, stream) = sock.framed(LinesCodec::new()).split();
-                println!("connection_pool {:?}", pool);
-
-                let fut = stream
-                    .forward(sender_tx.sink_map_err(into_other))
-                    .map_err(|e| println!("e {:?}", e))
-                    .into_future()
-                    .map(drop);
-
-                tokio::spawn(fut);
-
-                Ok((sink))
-            })
-            .and_then(|sink| {
-                println!("receiver_rx to {:?}", sink);
-                let sender = receiver_rx
-                    .filter(|line| !line.is_empty() )
-                    .map_err(|e| other_error("error! "))
-                    .forward(sink)
-                    .map(drop)
-                    .map_err(|e| println!("error!"));
-
-                tokio::spawn(sender);
-                Ok(())
+                Self::process_connection(outgoing_connection)
             })
             .map_err(|e| println!("error happened {:?}", e));
 
+        Self::process_pool(receiver_rx);
+
         tokio::run(future);
     }
+}
+
+fn commands_parser(line: String, pool: ConnectionPool) -> String {
+    if line == "/pool" {
+        println!("pool {:#?}", pool);
+    }
+    line
 }
 
 struct BadCodecs {}
