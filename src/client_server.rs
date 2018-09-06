@@ -1,6 +1,8 @@
 use futures::prelude::*;
 use futures::stream;
+use futures::sync::mpsc;
 use log_error;
+use std::collections::HashMap;
 use std::collections::{hash_map::DefaultHasher, BTreeMap};
 use std::net::SocketAddr;
 use std::sync::{atomic::AtomicUsize, Arc, RwLock};
@@ -27,6 +29,7 @@ pub struct ConnectInfo {
 #[derive(Clone, Debug)]
 pub struct ConnectionPool {
     id: Arc<AtomicUsize>,
+    pub peers: Arc<RwLock<HashMap<SocketAddr, mpsc::Sender<String>>>>,
     connections: Arc<RwLock<BTreeMap<u64, Connection>>>,
 }
 
@@ -34,6 +37,7 @@ impl ConnectionPool {
     pub fn new() -> Self {
         ConnectionPool {
             id: Arc::new(AtomicUsize::new(0)),
+            peers: Arc::new(RwLock::new(HashMap::new())),
             connections: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
@@ -51,6 +55,16 @@ impl ConnectionPool {
 
         let mut connections = self.connections.write().expect("ConnectionPool write lock");
         connections.insert(hash, connection);
+    }
+
+    pub fn contains(&self, address: &SocketAddr) -> bool {
+        let mut peers = self.peers.read().expect("ConnectionPool write lock");
+        peers.contains_key(address)
+    }
+
+    pub fn add_peer(&self, address: &SocketAddr, sender: mpsc::Sender<String>) {
+        let mut peers = self.peers.write().expect("ConnectionPool write lock");
+        peers.insert(*address, sender);
     }
 
     pub fn size(&self) -> usize {

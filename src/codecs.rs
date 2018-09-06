@@ -32,33 +32,6 @@ lazy_static! {
 type FramedSink = SplitSink<Framed<TcpStream, LinesCodec>>;
 
 #[test]
-fn test_connect() {
-    let address = "127.0.0.1:8000".parse().unwrap();
-    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
-
-    let listen_address = address;
-
-    let pool = ConnectionPool::new();
-
-    let remote_pool = pool.clone();
-    thread::spawn(move || {
-        let node = Node::new(listen_address, remote_pool);
-        node.listen();
-    });
-
-    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
-
-    let local_pool = pool.clone();
-    thread::spawn(move || {
-        let node2 = Node::new(address, local_pool);
-        node2.connect(&address, rsender_tx, eceiver_rx);
-    });
-
-    sender_tx.send("item".to_string()).wait();
-    thread::sleep(Duration::from_millis(500));
-}
-
-#[test]
 fn test_receiver() {
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
@@ -75,54 +48,56 @@ fn test_receiver() {
 #[derive(Clone)]
 pub struct Node {
     address: SocketAddr,
-    connection_pool: ConnectionPool,
+    pool: ConnectionPool,
 }
 
 impl Node {
     pub fn new(address: SocketAddr, connection_pool: ConnectionPool) -> Self {
         Node {
             address,
-            connection_pool,
+            pool: connection_pool,
         }
     }
 
-    pub fn listen(&self, receiver_rx: mpsc::Receiver<String>) {
+    pub fn listen(&self, network_tx: mpsc::Sender<String>) {
         let server = TcpListener::bind(&self.address).unwrap().incoming();
-
-        let pool = self.connection_pool.clone();
-
+        let pool = self.pool.clone();
         let mut connection_counter = 0;
+
+        let address = self.address.clone();
 
         let fut = server
             .for_each(move |incoming_connection| {
                 println!("connected from {:?}", incoming_connection);
 
                 connection_counter += 1;
-
-                Self::process_connection(incoming_connection)
+                Self::process_connection(
+                    &address,
+                    incoming_connection,
+                    pool.clone(),
+                    network_tx.clone(),
+                    true,
+                )
             })
             .map_err(|e| println!("error happened {:?}", e));
-
-        Self::process_pool(receiver_rx);
 
         tokio::run(fut);
     }
 
-    fn process_pool(receiver_rx: mpsc::Receiver<String>) {
+    pub fn process_pool(&self, receiver_rx: mpsc::Receiver<String>) {
+        let mut read_pool = self.pool.clone();
         thread::spawn(move || {
-            let mut pool_len = 0;
             let sender = receiver_rx.for_each(move |message| {
-                let mut write_pool = POOL.lock().unwrap();
-                let sender_tx: Vec<mpsc::Sender<String>> = write_pool.values().cloned().collect();
+                let sender_tx: Vec<mpsc::Sender<String>> =
+                    read_pool.peers.read().unwrap().values().cloned().collect();
+
+                println!("pool count {}", sender_tx.len());
 
                 sender_tx.iter().for_each(move |sen| {
                     let fut = sen.clone()
                         .send(message.clone())
                         .map(drop)
-                        .map_err(|e| {
-
-                            log_error(e);
-                        });
+                        .map_err(log_error);
                     tokio::spawn(fut);
                 });
 
@@ -132,35 +107,45 @@ impl Node {
         });
     }
 
-    fn process_connection(connection: TcpStream) -> Result<(), io::Error> {
+    fn process_connection(
+        address: &SocketAddr,
+        connection: TcpStream,
+        pool: ConnectionPool,
+        network_tx: mpsc::Sender<String>,
+        incoming: bool,
+    ) -> Result<(), io::Error> {
         let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
-        //
-        //        pool.add(Connection::new(
-        //            &incoming_connection.peer_addr().unwrap(),
-        //            &incoming_connection.local_addr().unwrap(),
-        //        ));
 
-        let peer_addr = connection.peer_addr().unwrap();
+        let peer_addr = connection.local_addr().unwrap();
         let (sink, stream) = connection.framed(LinesCodec::new()).split();
 
-        let sender = receiver_rx
-            .filter(|line| !line.is_empty())
-            .map_err(|e| other_error("error! "))
-            .forward(sink)
-            .map(drop)
-            .map_err(|e| println!("error!"));
-
-        let mut pool = POOL.lock().unwrap();
-        pool.insert(peer_addr, sender_tx);
+        let sender = sink.send(address.to_string())
+            .map_err(log_error)
+            .and_then(|sink| {
+                receiver_rx
+                    .filter(|line| !line.is_empty())
+                    .map_err(|e| other_error("error! "))
+                    .forward(sink)
+                    .map(drop)
+                    .map_err(|e| println!("error!"))
+            });
 
         let fut = stream
-            .for_each(move |line| {
-                println!("Received line {}", line);
-
-                Ok(())
-            })
-            .map_err(|e| println!("e {:?}", e))
             .into_future()
+            .map_err(|e| log_error(e.0))
+            .and_then(move |(line, stream)| {
+                let remote_address: SocketAddr = line.unwrap().parse().unwrap();
+                println!("connected from {}, incoming {}", remote_address, incoming);
+
+                pool.add_peer(&remote_address, sender_tx);
+
+                network_tx
+                    .sink_map_err(into_other)
+                    .send_all(stream)
+                    .map_err(log_error)
+                    .into_future()
+                    .map(drop)
+            })
             .map(drop);
 
         tokio::spawn(fut);
@@ -168,13 +153,9 @@ impl Node {
         Ok(())
     }
 
-    pub fn connect(
-        &self,
-        address: &SocketAddr,
-        remote_sender_tx: mpsc::Sender<String>,
-        receiver_rx: mpsc::Receiver<String>,
-    ) {
+    pub fn connect(&self, address: &SocketAddr, network_tx: mpsc::Sender<String>) {
         let address = address.clone();
+        let self_address = self.address.clone();
         let timeout = 1000;
         let max_tries = 5000;
         let strategy = FixedInterval::from_millis(timeout)
@@ -182,9 +163,7 @@ impl Node {
             .take(max_tries);
 
         let action = move || TcpStream::connect(&address);
-
-        let pool = self.connection_pool.clone();
-        let sender_tx = remote_sender_tx.clone();
+        let pool = self.pool.clone();
 
         let future = Retry::spawn(strategy, action)
             .map_err(into_other)
@@ -193,11 +172,9 @@ impl Node {
                     &outgoing_connection.local_addr().unwrap(),
                     &outgoing_connection.peer_addr().unwrap(),
                 ));
-                Self::process_connection(outgoing_connection)
+                Self::process_connection(&self_address, outgoing_connection, pool, network_tx, false)
             })
             .map_err(|e| println!("error happened {:?}", e));
-
-        Self::process_pool(receiver_rx);
 
         tokio::run(future);
     }

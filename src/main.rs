@@ -52,25 +52,35 @@ fn run_node(listen_address: SocketAddr, remote_address: SocketAddr, pool: Connec
     let listen_address = listen_address.clone();
     let remote_address = remote_address.clone();
     let (connect_sender_tx, connect_receiver_rx) = mpsc::channel::<String>(1024);
-    let (remote_sender_tx, remote_receiver_rx) = mpsc::channel::<String>(1024);
-    let (listen_sender_tx, listen_receiver_rx) = mpsc::channel::<String>(1024);
+    let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
     let node = Node::new(listen_address, pool);
     let connector = node.clone();
 
+    let remote_sender = sender_tx.clone();
+
     thread::spawn(move || {
-        connector.connect(&remote_address, remote_sender_tx, connect_receiver_rx);
+        connector.connect(&remote_address, remote_sender);
     });
 
     let listener = node.clone();
     thread::spawn(move || {
-        listener.listen(listen_receiver_rx);
+        listener.listen(sender_tx);
+    });
+
+    node.process_pool(connect_receiver_rx);
+
+    thread::spawn(move || {
+        let receiver = receiver_rx.for_each(|line| {
+            println!("> {}", line);
+            Ok(())
+        });
+        tokio::run(receiver);
     });
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line.unwrap();
         connect_sender_tx.clone().send(line.clone()).wait();
-        listen_sender_tx.clone().send(line).wait();
     }
 }
