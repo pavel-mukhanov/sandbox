@@ -2,7 +2,8 @@ use std::net::SocketAddr;
 
 use bytes::BytesMut;
 use client_server::Connection;
-use client_server::ConnectionPool;
+use client_server::ConnectionPool2;
+use futures::future;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 use futures::sync::mpsc;
@@ -47,70 +48,60 @@ fn test_receiver() {
 
 #[derive(Clone)]
 pub struct Node {
-    address: SocketAddr,
-    pool: ConnectionPool,
+    pub address: SocketAddr,
+    pool: ConnectionPool2,
 }
 
 impl Node {
-    pub fn new(address: SocketAddr, connection_pool: ConnectionPool) -> Self {
+    pub fn new(address: SocketAddr, connection_pool: ConnectionPool2) -> Self {
         Node {
             address,
             pool: connection_pool,
         }
     }
 
-    pub fn listen(&self, network_tx: mpsc::Sender<String>) {
+    pub fn listen(
+        &self,
+        network_tx: mpsc::Sender<String>,
+    ) -> impl Future<Item = (), Error = io::Error> {
         let server = TcpListener::bind(&self.address).unwrap().incoming();
         let pool = self.pool.clone();
         let mut connection_counter = 0;
 
         let address = self.address.clone();
 
-        let fut = server
-            .for_each(move |incoming_connection| {
-                println!("connected from {:?}", incoming_connection);
+        let fut = server.for_each(move |incoming_connection| {
+            println!("connected from {:?}", incoming_connection);
 
-                connection_counter += 1;
-                Self::process_connection(
-                    &address,
-                    incoming_connection,
-                    pool.clone(),
-                    network_tx.clone(),
-                    true,
-                )
-            })
-            .map_err(|e| println!("error happened {:?}", e));
+            connection_counter += 1;
+            Self::process_connection(
+                &address,
+                incoming_connection,
+                pool.clone(),
+                network_tx.clone(),
+                true,
+            )
+        });
 
-        tokio::run(fut);
+        fut
     }
 
-    pub fn process_pool(&self, receiver_rx: mpsc::Receiver<String>) {
-        let mut read_pool = self.pool.clone();
-        thread::spawn(move || {
-            let sender = receiver_rx.for_each(move |message| {
-                let sender_tx: Vec<mpsc::Sender<String>> =
-                    read_pool.peers.read().unwrap().values().cloned().collect();
+    fn send_message(pool: ConnectionPool2, message: String, address: &SocketAddr) -> impl Future<Item = (), Error = io::Error> {
+        let mut read_pool = pool.clone();
+        let sender_tx = read_pool.peers.read().unwrap();
+        let sender = sender_tx.get(&address).unwrap();
 
-                println!("pool count {}", sender_tx.len());
-
-                sender_tx.iter().for_each(move |sen| {
-                    let fut = sen.clone()
-                        .send(message.clone())
-                        .map(drop)
-                        .map_err(log_error);
-                    tokio::spawn(fut);
-                });
-
-                Ok(())
-            });
-            tokio::run(sender);
-        });
+        sender
+            .clone()
+            .send(message.clone())
+            .map_err(into_other)
+            .map(drop)
     }
 
     fn process_connection(
         address: &SocketAddr,
         connection: TcpStream,
-        pool: ConnectionPool,
+        pool: ConnectionPool2,
         network_tx: mpsc::Sender<String>,
         incoming: bool,
     ) -> Result<(), io::Error> {
@@ -153,9 +144,44 @@ impl Node {
         Ok(())
     }
 
-    pub fn connect(&self, address: &SocketAddr, network_tx: mpsc::Sender<String>) {
+    pub fn request_handler(
+        &self,
+        receiver: mpsc::Receiver<String>,
+        network_tx: mpsc::Sender<String>,
+    ) -> impl Future<Item = (), Error = io::Error> {
+        let address = self.address.clone();
+        let pool = self.pool.clone();
+
+        let handler = receiver.for_each(move |line| {
+            let fut = match line.as_str() {
+                "connect" => future::Either::A(Self::connect(
+                    pool.clone(),
+                    &address,
+                    &"127.0.0.1:9000".parse().unwrap(),
+                    network_tx.clone(),
+                )),
+                _ => future::Either::B(Self::send_message(pool.clone(), line, &"127.0.0.1:9000".parse().unwrap())),
+            }.map_err(log_error);
+
+            tokio::spawn(fut);
+            Ok(())
+        });
+
+        handler.map_err(|e| other_error(""))
+    }
+
+    pub fn ok() -> impl Future<Item = (), Error = io::Error> {
+        future::ok::<(), io::Error>(())
+    }
+
+    pub fn connect(
+        pool: ConnectionPool2,
+        self_address: &SocketAddr,
+        address: &SocketAddr,
+        network_tx: mpsc::Sender<String>,
+    ) -> impl Future<Item = (), Error = io::Error> {
         let address = address.clone();
-        let self_address = self.address.clone();
+        let self_address = self_address.clone();
         let timeout = 1000;
         let max_tries = 5000;
         let strategy = FixedInterval::from_millis(timeout)
@@ -163,24 +189,25 @@ impl Node {
             .take(max_tries);
 
         let action = move || TcpStream::connect(&address);
-        let pool = self.pool.clone();
+        let pool = pool.clone();
 
-        let future = Retry::spawn(strategy, action)
-            .map_err(into_other)
-            .and_then(move |outgoing_connection| {
-                pool.add(Connection::new(
-                    &outgoing_connection.local_addr().unwrap(),
-                    &outgoing_connection.peer_addr().unwrap(),
-                ));
-                Self::process_connection(&self_address, outgoing_connection, pool, network_tx, false)
-            })
-            .map_err(|e| println!("error happened {:?}", e));
+        let future = Retry::spawn(strategy, action).map_err(into_other).and_then(
+            move |outgoing_connection| {
+                Self::process_connection(
+                    &self_address,
+                    outgoing_connection,
+                    pool,
+                    network_tx,
+                    false,
+                )
+            },
+        );
 
-        tokio::run(future);
+        future
     }
 }
 
-fn commands_parser(line: String, pool: ConnectionPool) -> String {
+fn commands_parser(line: String, pool: ConnectionPool2) -> String {
     if line == "/pool" {
         println!("pool {:#?}", pool);
     }

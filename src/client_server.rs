@@ -27,48 +27,22 @@ pub struct ConnectInfo {
 }
 
 #[derive(Clone, Debug)]
-pub struct ConnectionPool {
+pub struct ConnectionPool2 {
     id: Arc<AtomicUsize>,
     pub peers: Arc<RwLock<HashMap<SocketAddr, mpsc::Sender<String>>>>,
-    connections: Arc<RwLock<BTreeMap<u64, Connection>>>,
 }
 
-impl ConnectionPool {
+impl ConnectionPool2 {
     pub fn new() -> Self {
-        ConnectionPool {
+        ConnectionPool2 {
             id: Arc::new(AtomicUsize::new(0)),
             peers: Arc::new(RwLock::new(HashMap::new())),
-            connections: Arc::new(RwLock::new(BTreeMap::new())),
         }
-    }
-
-    pub fn add(&self, connection: Connection) {
-        let new_id = self.id.fetch_add(1, Ordering::Relaxed);
-
-        let mut s = DefaultHasher::new();
-
-        connection.hash(&mut s);
-        //        let hash = s.finish();
-        let hash = new_id as u64;
-
-        println!("hash {:?}", hash);
-
-        let mut connections = self.connections.write().expect("ConnectionPool write lock");
-        connections.insert(hash, connection);
-    }
-
-    pub fn contains(&self, address: &SocketAddr) -> bool {
-        let mut peers = self.peers.read().expect("ConnectionPool write lock");
-        peers.contains_key(address)
     }
 
     pub fn add_peer(&self, address: &SocketAddr, sender: mpsc::Sender<String>) {
         let mut peers = self.peers.write().expect("ConnectionPool write lock");
         peers.insert(*address, sender);
-    }
-
-    pub fn size(&self) -> usize {
-        self.connections.read().unwrap().len()
     }
 }
 
@@ -93,7 +67,7 @@ fn test_connect() {
 
     let address1 = "127.0.0.1:8000".parse().unwrap();
     let address2: SocketAddr = "127.0.0.1:9000".parse().unwrap();
-    let connection_pool = ConnectionPool::new();
+    let connection_pool = ConnectionPool2::new();
 
     let node1 = Node::new(connection_pool.clone());
     let node2 = Node::new(connection_pool.clone());
@@ -111,11 +85,11 @@ fn test_connect() {
 }
 
 pub struct Node {
-    connection_pool: ConnectionPool,
+    connection_pool: ConnectionPool2,
 }
 
 impl Node {
-    pub fn new(connection_pool: ConnectionPool) -> Self {
+    pub fn new(connection_pool: ConnectionPool2) -> Self {
         Node { connection_pool }
     }
 
@@ -129,10 +103,6 @@ impl Node {
                 .incoming()
                 .for_each(move |sock| {
                     println!("received connect from {:?}", sock.peer_addr());
-                    pool.add(Connection::new(
-                        &sock.peer_addr().unwrap(),
-                        &sock.local_addr().unwrap(),
-                    ));
 
                     let (writer, reader) = sock.framed(LinesCodec::new()).split();
 
@@ -176,11 +146,6 @@ impl Node {
         let connect = TcpStream::connect(&address)
             .and_then(move |sock| {
                 println!("connected to {:?}", sock.peer_addr());
-
-                pool.add(Connection::new(
-                    &sock.local_addr().unwrap(),
-                    &sock.peer_addr().unwrap(),
-                ));
 
                 let (writer, reader) = sock.framed(LinesCodec::new()).split();
 
