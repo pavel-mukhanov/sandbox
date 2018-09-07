@@ -8,6 +8,9 @@ extern crate tokio_io;
 extern crate tokio_retry;
 
 #[macro_use]
+extern crate failure;
+
+#[macro_use]
 extern crate lazy_static;
 
 use clap::App;
@@ -59,18 +62,11 @@ fn run_node(listen_address: SocketAddr, remote_address: SocketAddr, pool: Connec
 
     let remote_sender = sender_tx.clone();
 
-    let connect = Node::connect(
-        pool.clone(),
-        &connector.address,
-        &remote_address,
-        remote_sender,
-    );
-
     let listener = node.clone();
 
     let server = listener.listen(sender_tx.clone());
     let handler = node.request_handler(connect_receiver_rx, sender_tx);
-    thread::spawn(|| tokio::run(server.join3(connect, handler).map_err(log_error).map(drop)));
+    thread::spawn(|| tokio::run(server.join(handler).map_err(log_error).map(drop)));
 
     thread::spawn(move || {
         let receiver = receiver_rx.for_each(|line| {
