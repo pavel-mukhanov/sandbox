@@ -1,8 +1,7 @@
 use std::net::SocketAddr;
 
 use bytes::BytesMut;
-use client_server::Connection;
-use client_server::ConnectionPool2;
+use crate::client_server::{Connection, ConnectionPool2};
 use futures::future;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
@@ -91,7 +90,7 @@ impl Node {
     }
 
     fn send_message(pool: ConnectionPool2, message: String, address: &SocketAddr) -> impl Future<Item = (), Error = failure::Error> {
-        let mut read_pool = pool.clone();
+        let read_pool = pool.clone();
         let sender_tx = read_pool.peers.read().unwrap();
         let sender = sender_tx.get(&address).unwrap();
 
@@ -111,7 +110,7 @@ impl Node {
     ) -> Result<(), failure::Error> {
         let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
-        let peer_addr = connection.local_addr().unwrap();
+        let _peer_addr = connection.local_addr().unwrap();
         let (sink, stream) = connection.framed(LinesCodec::new()).split();
 
         let sender = sink.send(address.to_string())
@@ -119,10 +118,10 @@ impl Node {
             .and_then(|sink| {
                 receiver_rx
                     .filter(|line| !line.is_empty())
-                    .map_err(|e| format_err!("error! "))
+                    .map_err(|_e| format_err!("error! "))
                     .forward(sink)
                     .map(drop)
-                    .map_err(|e| println!("error!"))
+                    .map_err(|_e| println!("error!"))
             });
 
         let fut = stream
@@ -171,7 +170,7 @@ impl Node {
             Ok(())
         });
 
-        handler.map_err(|e| format_err!(""))
+        handler.map_err(|_e| format_err!(""))
     }
 
     pub fn ok() -> impl Future<Item = (), Error = failure::Error> {
@@ -232,7 +231,7 @@ impl Decoder for BadCodecs {
 
     fn decode(
         &mut self,
-        src: &mut BytesMut,
+        _src: &mut BytesMut,
     ) -> Result<Option<<Self as Decoder>::Item>, <Self as Decoder>::Error> {
         Ok(Some("str".to_string()))
     }
@@ -244,8 +243,8 @@ impl Encoder for BadCodecs {
 
     fn encode(
         &mut self,
-        item: <Self as Encoder>::Item,
-        dst: &mut BytesMut,
+        _item: <Self as Encoder>::Item,
+        _dst: &mut BytesMut,
     ) -> Result<(), <Self as Encoder>::Error> {
         Ok(())
     }

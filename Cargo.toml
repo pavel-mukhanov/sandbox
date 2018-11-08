@@ -2,6 +2,7 @@
 name = "sandbox"
 version = "0.1.0"
 authors = ["pavelmukhanov"]
+edition = '2018'
 
 [dependencies]
 tokio = "0.1.7"
@@ -20,3 +21,11 @@ clap = "2.32.0"
 tokio-retry = "0.2.0"
 lazy_static = "1.1.0"
 failure = "0.1.2"
+futures-cpupool = "0.1.8"
+openssl = "0.10.12"
+foreign-types-shared = "0.1.1"
+base64 = "0.9.3"
+hex = "0.3.2"
+sodiumoxide = "0.1.0"
+
+external = { path = "external"}

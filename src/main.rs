@@ -6,6 +6,14 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_retry;
+extern crate futures_cpupool;
+extern crate external;
+extern crate num;
+extern crate openssl;
+extern crate foreign_types_shared;
+extern crate base64;
+extern crate hex;
+extern crate sodiumoxide;
 
 #[macro_use]
 extern crate failure;
@@ -18,9 +26,7 @@ use clap::App;
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use clap::Arg;
-use client_server::ConnectionPool2;
-use codecs::log_error;
-use codecs::Node;
+use crate::codecs::{log_error, Node};
 use futures::stream::{self, Stream};
 use futures::sync::mpsc;
 use futures::{Future, Sink};
@@ -33,9 +39,12 @@ use std::thread;
 use tokio_io::{
     io::{read_exact, write_all}, AsyncRead, AsyncWrite,
 };
+use crate::client_server::ConnectionPool2;
 
 mod client_server;
 mod codecs;
+mod future_send;
+mod crypto;
 
 fn main() {
     let matches = App::new("simple")
@@ -53,14 +62,14 @@ fn main() {
 
 fn run_node(listen_address: SocketAddr, remote_address: SocketAddr, pool: ConnectionPool2) {
     let listen_address = listen_address.clone();
-    let remote_address = remote_address.clone();
+    let _remote_address = remote_address.clone();
     let (connect_sender_tx, connect_receiver_rx) = mpsc::channel::<String>(1024);
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
     let node = Node::new(listen_address, pool.clone());
-    let connector = node.clone();
+    let _connector = node.clone();
 
-    let remote_sender = sender_tx.clone();
+    let _remote_sender = sender_tx.clone();
 
     let listener = node.clone();
 

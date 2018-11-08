@@ -1,7 +1,6 @@
 use futures::prelude::*;
 use futures::stream;
 use futures::sync::mpsc;
-use log_error;
 use std::collections::HashMap;
 use std::collections::{hash_map::DefaultHasher, BTreeMap};
 use std::net::SocketAddr;
@@ -16,6 +15,7 @@ use tokio::io::{self, AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio_codec::LinesCodec;
+use crate::codecs::log_error;
 
 pub struct PublicKey([u8]);
 
@@ -66,7 +66,7 @@ fn test_connect() {
     println!("test connect!");
 
     let address1 = "127.0.0.1:8000".parse().unwrap();
-    let address2: SocketAddr = "127.0.0.1:9000".parse().unwrap();
+    let _address2: SocketAddr = "127.0.0.1:9000".parse().unwrap();
     let connection_pool = ConnectionPool2::new();
 
     let node1 = Node::new(connection_pool.clone());
@@ -95,7 +95,7 @@ impl Node {
 
     pub fn listen(&self, address: &SocketAddr) {
         let address = address.clone();
-        let pool = self.connection_pool.clone();
+        let _pool = self.connection_pool.clone();
 
         let handler = thread::spawn(move || {
             let server = TcpListener::bind(&address)
@@ -104,7 +104,7 @@ impl Node {
                 .for_each(move |sock| {
                     println!("received connect from {:?}", sock.peer_addr());
 
-                    let (writer, reader) = sock.framed(LinesCodec::new()).split();
+                    let (_writer, reader) = sock.framed(LinesCodec::new()).split();
 
                     let mut index = 0;
 
@@ -141,13 +141,13 @@ impl Node {
 
     pub fn connect(&self, address: &SocketAddr) {
         let address = address.clone();
-        let pool = self.connection_pool.clone();
+        let _pool = self.connection_pool.clone();
 
         let connect = TcpStream::connect(&address)
             .and_then(move |sock| {
                 println!("connected to {:?}", sock.peer_addr());
 
-                let (writer, reader) = sock.framed(LinesCodec::new()).split();
+                let (writer, _reader) = sock.framed(LinesCodec::new()).split();
 
                 let lines = gen_lines(250_000);
 
