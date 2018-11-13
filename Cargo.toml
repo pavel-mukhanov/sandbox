@@ -2,7 +2,6 @@
 name = "sandbox"
 version = "0.1.0"
 authors = ["pavelmukhanov"]
-edition = '2018'
 
 [dependencies]
 tokio = "0.1.7"

@@ -1,31 +1,30 @@
+use std::{error::Error as StdError, io};
+use std::borrow::ToOwned;
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
+use std::thread;
+use std::time::Duration;
 
 use bytes::BytesMut;
-use crate::client_server::{Connection, ConnectionPool2};
+use failure;
 use futures::future;
 use futures::prelude::*;
 use futures::stream::{self, Stream};
 use futures::sync::mpsc;
-use std::borrow::ToOwned;
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::sync::Arc;
-use std::sync::RwLock;
-use std::thread;
-use std::time::Duration;
-use std::{error::Error as StdError, io};
 use tokio;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::stream::SplitSink;
+use tokio_io::{AsyncRead, AsyncWrite, codec::LinesCodec};
 use tokio_io::codec::{Decoder, Encoder, Framed};
-use tokio_io::{codec::LinesCodec, AsyncRead, AsyncWrite};
 use tokio_retry::{
-    strategy::{jitter, FixedInterval}, Retry,
+    Retry, strategy::{FixedInterval, jitter},
 };
 
-use failure;
-
-use std::sync::Mutex;
+use crate::client_server::{Connection, ConnectionPool2};
 
 lazy_static! {
     static ref POOL: Mutex<HashMap<SocketAddr, mpsc::Sender<String>>> = Mutex::new(HashMap::new());

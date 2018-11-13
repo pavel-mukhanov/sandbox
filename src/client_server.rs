@@ -1,20 +1,22 @@
-use futures::prelude::*;
-use futures::stream;
-use futures::sync::mpsc;
-use std::collections::HashMap;
-use std::collections::{hash_map::DefaultHasher, BTreeMap};
-use std::net::SocketAddr;
-use std::sync::{atomic::AtomicUsize, Arc, RwLock};
-use std::thread;
-use std::time::Duration;
 use std::{
     hash::{Hash, Hasher}, sync::atomic::Ordering,
 };
+use std::collections::{BTreeMap, hash_map::DefaultHasher};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::{Arc, atomic::AtomicUsize, RwLock};
+use std::thread;
+use std::time::Duration;
+
+use futures::prelude::*;
+use futures::stream;
+use futures::sync::mpsc;
 use tokio;
 use tokio::io::{self, AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio_codec::LinesCodec;
+
 use crate::codecs::log_error;
 
 pub struct PublicKey([u8]);

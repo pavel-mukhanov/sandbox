@@ -1,45 +1,40 @@
+extern crate base64;
 extern crate byteorder;
 extern crate bytes;
 extern crate clap;
+extern crate external;
+#[macro_use]
+extern crate failure;
+extern crate foreign_types_shared;
 extern crate futures;
+extern crate futures_cpupool;
+extern crate hex;
+#[macro_use]
+extern crate lazy_static;
+extern crate num;
+extern crate openssl;
+extern crate sodiumoxide;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_retry;
-extern crate futures_cpupool;
-extern crate external;
-extern crate num;
-extern crate openssl;
-extern crate foreign_types_shared;
-extern crate base64;
-extern crate hex;
-extern crate sodiumoxide;
 
-#[macro_use]
-extern crate failure;
-
-#[macro_use]
-extern crate lazy_static;
+use std::io;
+use std::io::BufRead;
+use std::net::SocketAddr;
+use std::thread;
 
 use clap::App;
-
-use byteorder::ByteOrder;
-use byteorder::LittleEndian;
 use clap::Arg;
-use crate::codecs::{log_error, Node};
+use futures::{Future, Sink};
 use futures::stream::{self, Stream};
 use futures::sync::mpsc;
-use futures::{Future, Sink};
-use std::collections::VecDeque;
-use std::io;
-use std::io::{BufRead, Read};
-use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
-use std::thread;
 use tokio_io::{
-    io::{read_exact, write_all}, AsyncRead, AsyncWrite,
+    AsyncRead, AsyncWrite, io::{read_exact, write_all},
 };
+
 use crate::client_server::ConnectionPool2;
+use crate::codecs::{log_error, Node};
 
 mod client_server;
 mod codecs;
