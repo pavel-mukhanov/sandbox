@@ -1,10 +1,5 @@
-use std::{
-    hash::{Hash, Hasher}, sync::atomic::Ordering,
-};
-use std::collections::{BTreeMap, hash_map::DefaultHasher};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{Arc, atomic::AtomicUsize, RwLock};
 use std::thread;
 use std::time::Duration;
 
@@ -12,21 +7,13 @@ use futures::prelude::*;
 use futures::stream;
 use futures::sync::mpsc;
 use tokio;
-use tokio::io::{self, AsyncRead, AsyncWrite};
+use tokio::io::{self, AsyncRead};
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use tokio_codec::LinesCodec;
 
 use crate::codecs::log_error;
-
-pub struct PublicKey([u8]);
-
-pub struct ConnectInfo {
-    /// Peer address.
-    pub address: SocketAddr,
-    /// Peer public key.
-    pub public_key: PublicKey,
-}
+use tokio_io::codec::LinesCodec;
+use std::sync::{Arc, RwLock, atomic::AtomicUsize};
 
 #[derive(Clone, Debug)]
 pub struct ConnectionPool2 {
@@ -45,21 +32,6 @@ impl ConnectionPool2 {
     pub fn add_peer(&self, address: &SocketAddr, sender: mpsc::Sender<String>) {
         let mut peers = self.peers.write().expect("ConnectionPool write lock");
         peers.insert(*address, sender);
-    }
-}
-
-#[derive(Debug, Hash)]
-pub struct Connection {
-    from: SocketAddr,
-    to: SocketAddr,
-}
-
-impl Connection {
-    pub fn new(local: &SocketAddr, remote: &SocketAddr) -> Self {
-        Connection {
-            from: *local,
-            to: *remote,
-        }
     }
 }
 
@@ -138,7 +110,7 @@ impl Node {
             tokio::run(server);
         });
 
-        handler.join();
+        handler.join().unwrap();
     }
 
     pub fn connect(&self, address: &SocketAddr) {
@@ -153,7 +125,7 @@ impl Node {
 
                 let lines = gen_lines(250_000);
 
-                stream::iter(lines).forward(writer).map(drop)
+                stream::iter_ok(lines).map(|line| line.unwrap_or(String::new())).forward(writer).map(drop)
             })
             .map_err(log_error);
 

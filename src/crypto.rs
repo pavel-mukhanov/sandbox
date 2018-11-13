@@ -1,19 +1,12 @@
 
 use openssl::symm::Cipher;
-use openssl::dh::Dh;
-use openssl::dsa::Dsa;
-use openssl::ec::EcKey;
-use openssl::nid::Nid;
 use openssl::rsa::*;
 use openssl::pkey::*;
-use std::{io, ptr};
-use openssl::x509::*;
 use base64;
 use hex;
-use sodiumoxide::crypto::sign::gen_keypair;
 
 
-use foreign_types_shared::ForeignType;
+use exonum::crypto::gen_keypair;
 
 #[test]
 fn test_pem_rsa() {

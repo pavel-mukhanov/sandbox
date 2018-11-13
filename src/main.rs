@@ -13,11 +13,10 @@ extern crate hex;
 extern crate lazy_static;
 extern crate num;
 extern crate openssl;
-extern crate sodiumoxide;
 extern crate tokio;
-extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_retry;
+extern crate exonum;
 
 use std::io;
 use std::io::BufRead;
@@ -27,11 +26,8 @@ use std::thread;
 use clap::App;
 use clap::Arg;
 use futures::{Future, Sink};
-use futures::stream::{self, Stream};
+use futures::stream::Stream;
 use futures::sync::mpsc;
-use tokio_io::{
-    AsyncRead, AsyncWrite, io::{read_exact, write_all},
-};
 
 use crate::client_server::ConnectionPool2;
 use crate::codecs::{log_error, Node};
@@ -40,6 +36,7 @@ mod client_server;
 mod codecs;
 mod future_send;
 mod crypto;
+mod proof;
 
 fn main() {
     let matches = App::new("simple")
@@ -83,6 +80,6 @@ fn run_node(listen_address: SocketAddr, remote_address: SocketAddr, pool: Connec
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line.unwrap();
-        connect_sender_tx.clone().send(line.clone()).wait();
+        connect_sender_tx.clone().send(line.clone()).wait().unwrap();
     }
 }

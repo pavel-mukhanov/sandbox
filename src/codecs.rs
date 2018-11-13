@@ -1,42 +1,32 @@
-use std::{error::Error as StdError, io};
-use std::borrow::ToOwned;
+use std::{error::Error as StdError};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::RwLock;
-use std::thread;
-use std::time::Duration;
 
-use bytes::BytesMut;
 use failure;
 use futures::future;
 use futures::prelude::*;
-use futures::stream::{self, Stream};
+use futures::stream::{Stream};
 use futures::sync::mpsc;
 use tokio;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::stream::SplitSink;
-use tokio_io::{AsyncRead, AsyncWrite, codec::LinesCodec};
-use tokio_io::codec::{Decoder, Encoder, Framed};
+use tokio_io::{AsyncRead, codec::LinesCodec};
 use tokio_retry::{
     Retry, strategy::{FixedInterval, jitter},
 };
 
-use crate::client_server::{Connection, ConnectionPool2};
+use crate::client_server::{ConnectionPool2};
 
 lazy_static! {
     static ref POOL: Mutex<HashMap<SocketAddr, mpsc::Sender<String>>> = Mutex::new(HashMap::new());
 }
 
-type FramedSink = SplitSink<Framed<TcpStream, LinesCodec>>;
-
 #[test]
 fn test_receiver() {
     let (sender_tx, receiver_rx) = mpsc::channel::<String>(1024);
 
-    sender_tx.send("String".to_string());
+    sender_tx.send("String".to_string()).wait().unwrap();
 
     let fut = receiver_rx.for_each(|item| {
         println!("item {}", item);
@@ -172,10 +162,6 @@ impl Node {
         handler.map_err(|_e| format_err!(""))
     }
 
-    pub fn ok() -> impl Future<Item = (), Error = failure::Error> {
-        future::ok::<(), failure::Error>(())
-    }
-
     pub fn connect(
         pool: ConnectionPool2,
         self_address: &SocketAddr,
@@ -206,46 +192,6 @@ impl Node {
         );
 
         future
-    }
-}
-
-fn commands_parser(line: String, pool: ConnectionPool2) -> String {
-    if line == "/pool" {
-        println!("pool {:#?}", pool);
-    }
-    line
-}
-
-struct BadCodecs {}
-
-impl BadCodecs {
-    pub fn new() -> Self {
-        BadCodecs {}
-    }
-}
-
-impl Decoder for BadCodecs {
-    type Item = String;
-    type Error = failure::Error;
-
-    fn decode(
-        &mut self,
-        _src: &mut BytesMut,
-    ) -> Result<Option<<Self as Decoder>::Item>, <Self as Decoder>::Error> {
-        Ok(Some("str".to_string()))
-    }
-}
-
-impl Encoder for BadCodecs {
-    type Item = String;
-    type Error = io::Error;
-
-    fn encode(
-        &mut self,
-        _item: <Self as Encoder>::Item,
-        _dst: &mut BytesMut,
-    ) -> Result<(), <Self as Encoder>::Error> {
-        Ok(())
     }
 }
 
