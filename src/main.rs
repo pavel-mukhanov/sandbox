@@ -11,12 +11,12 @@ extern crate futures_cpupool;
 extern crate hex;
 #[macro_use]
 extern crate lazy_static;
+extern crate exonum;
 extern crate num;
 extern crate openssl;
 extern crate tokio;
-extern crate tokio_io;
 extern crate tokio_retry;
-extern crate exonum;
+extern crate tokio_codec;
 
 use std::io;
 use std::io::BufRead;
@@ -25,17 +25,17 @@ use std::thread;
 
 use clap::App;
 use clap::Arg;
-use futures::{Future, Sink};
 use futures::stream::Stream;
 use futures::sync::mpsc;
+use futures::{Future, Sink};
 
 use crate::client_server::ConnectionPool2;
 use crate::codecs::{log_error, Node};
 
 mod client_server;
 mod codecs;
-mod future_send;
 mod crypto;
+mod future_send;
 mod proof;
 
 fn main() {

@@ -1,25 +1,21 @@
-
-use openssl::symm::Cipher;
-use openssl::rsa::*;
-use openssl::pkey::*;
 use base64;
 use hex;
-
+use openssl::pkey::*;
+use openssl::rsa::*;
+use openssl::symm::Cipher;
 
 use exonum::crypto::gen_keypair;
 
 #[test]
 fn test_pem_rsa() {
-
     let rsa = Rsa::generate(2048).unwrap();
     let pkey = PKey::from_rsa(rsa).unwrap();
-    let pem = pkey.private_key_to_pem_pkcs8_passphrase(Cipher::aes_128_cbc(), b"foobar")
+    let pem = pkey
+        .private_key_to_pem_pkcs8_passphrase(Cipher::aes_128_cbc(), b"foobar")
         .unwrap();
     PKey::private_key_from_pem_passphrase(&pem, b"foobar").unwrap();
 
     assert!(PKey::private_key_from_pem_passphrase(&pem, b"fizzbuzz").is_err());
-
-
 
     let string = String::from_utf8(pem);
 
@@ -34,7 +30,6 @@ fn test_read_pem() {
     let key_base64 = base64::encode(&key);
     println!("key_base64 {:?}", key_base64);
 
-
     let key_hex = hex::decode(key);
 
     println!("key_hex {:?}", key_hex);
@@ -48,7 +43,7 @@ fn test_write_pem() {
     let sodium_private_key = &sodium_key.0[..];
 
     println!("sodium private key {:?}", sodium_private_key);
-//    println!("key bytes {:?}", &key[..]);
+    //    println!("key bytes {:?}", &key[..]);
 
     let sodium_key = base64::encode(sodium_private_key);
     println!("sodium private key base64 {:?}", sodium_key);
