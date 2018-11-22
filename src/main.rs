@@ -1,3 +1,5 @@
+#![feature(test)]
+
 extern crate base64;
 extern crate byteorder;
 extern crate bytes;

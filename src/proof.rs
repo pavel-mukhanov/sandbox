@@ -1,4 +1,3 @@
-#![feature(test)]
 
 use exonum::storage::{ProofListIndex, MemoryDB, Database};
 use exonum::crypto::{HashStream, Hash, HASH_SIZE, hash};
