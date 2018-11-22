@@ -17,6 +17,7 @@ extern crate tokio;
 extern crate tokio_io;
 extern crate tokio_retry;
 extern crate exonum;
+extern crate test;
 
 use std::io;
 use std::io::BufRead;
