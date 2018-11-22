@@ -1,5 +1,5 @@
-use std::{error::Error as StdError};
 use std::collections::HashMap;
+use std::error::Error as StdError;
 use std::fmt::Display;
 use std::net::SocketAddr;
 use std::sync::Mutex;
@@ -7,16 +7,17 @@ use std::sync::Mutex;
 use failure;
 use futures::future;
 use futures::prelude::*;
-use futures::stream::{Stream};
+use futures::stream::Stream;
 use futures::sync::mpsc;
-use tokio;
+use tokio::io::AsyncRead;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_io::{AsyncRead, codec::LinesCodec};
 use tokio_retry::{
-    Retry, strategy::{FixedInterval, jitter},
+    strategy::{jitter, FixedInterval},
+    Retry,
 };
 
-use crate::client_server::{ConnectionPool2};
+use crate::client_server::ConnectionPool2;
+use tokio_codec::LinesCodec;
 
 lazy_static! {
     static ref POOL: Mutex<HashMap<SocketAddr, mpsc::Sender<String>>> = Mutex::new(HashMap::new());
@@ -63,22 +64,26 @@ impl Node {
         let fut = server
             .map_err(into_failure)
             .for_each(move |incoming_connection| {
-            println!("connected from {:?}", incoming_connection);
+                println!("connected from {:?}", incoming_connection);
 
-            connection_counter += 1;
-            Self::process_connection(
-                &address,
-                incoming_connection,
-                pool.clone(),
-                network_tx.clone(),
-                true,
-            )
-        });
+                connection_counter += 1;
+                Self::process_connection(
+                    &address,
+                    incoming_connection,
+                    pool.clone(),
+                    network_tx.clone(),
+                    true,
+                )
+            });
 
         fut
     }
 
-    fn send_message(pool: ConnectionPool2, message: String, address: &SocketAddr) -> impl Future<Item = (), Error = failure::Error> {
+    fn send_message(
+        pool: ConnectionPool2,
+        message: String,
+        address: &SocketAddr,
+    ) -> impl Future<Item = (), Error = failure::Error> {
         let read_pool = pool.clone();
         let sender_tx = read_pool.peers.read().unwrap();
         let sender = sender_tx.get(&address).unwrap();
@@ -90,6 +95,7 @@ impl Node {
             .map(drop)
     }
 
+    #[allow(deprecated)]
     fn process_connection(
         address: &SocketAddr,
         connection: TcpStream,
@@ -102,7 +108,8 @@ impl Node {
         let _peer_addr = connection.local_addr().unwrap();
         let (sink, stream) = connection.framed(LinesCodec::new()).split();
 
-        let sender = sink.send(address.to_string())
+        let sender = sink
+            .send(address.to_string())
             .map_err(log_error)
             .and_then(|sink| {
                 receiver_rx
@@ -152,8 +159,13 @@ impl Node {
                     &"127.0.0.1:9000".parse().unwrap(),
                     network_tx.clone(),
                 )),
-                _ => future::Either::B(Self::send_message(pool.clone(), line, &"127.0.0.1:9000".parse().unwrap())),
-            }.map_err(log_error);
+                _ => future::Either::B(Self::send_message(
+                    pool.clone(),
+                    line,
+                    &"127.0.0.1:9000".parse().unwrap(),
+                )),
+            }
+            .map_err(log_error);
 
             tokio::spawn(fut);
             Ok(())
@@ -179,8 +191,9 @@ impl Node {
         let action = move || TcpStream::connect(&address);
         let pool = pool.clone();
 
-        let future = Retry::spawn(strategy, action).map_err(into_failure).and_then(
-            move |outgoing_connection| {
+        let future = Retry::spawn(strategy, action)
+            .map_err(into_failure)
+            .and_then(move |outgoing_connection| {
                 Self::process_connection(
                     &self_address,
                     outgoing_connection,
@@ -188,8 +201,7 @@ impl Node {
                     network_tx,
                     false,
                 )
-            },
-        );
+            });
 
         future
     }

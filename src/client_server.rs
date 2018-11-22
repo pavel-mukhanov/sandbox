@@ -12,8 +12,8 @@ use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 
 use crate::codecs::log_error;
-use tokio_io::codec::LinesCodec;
-use std::sync::{Arc, RwLock, atomic::AtomicUsize};
+use std::sync::{atomic::AtomicUsize, Arc, RwLock};
+use tokio_codec::LinesCodec;
 
 #[derive(Clone, Debug)]
 pub struct ConnectionPool2 {
@@ -52,7 +52,7 @@ fn test_connect() {
     /*
     node2.listen(&address2);
     thread::sleep(Duration::from_millis(200));
-
+    
     node2.connect(&address1);
     node2.connect(&address1);
     node1.connect(&address2); */
@@ -67,6 +67,7 @@ impl Node {
         Node { connection_pool }
     }
 
+    #[allow(deprecated)]
     pub fn listen(&self, address: &SocketAddr) {
         let address = address.clone();
         let _pool = self.connection_pool.clone();
@@ -113,6 +114,7 @@ impl Node {
         handler.join().unwrap();
     }
 
+    #[allow(deprecated)]
     pub fn connect(&self, address: &SocketAddr) {
         let address = address.clone();
         let _pool = self.connection_pool.clone();
@@ -125,7 +127,10 @@ impl Node {
 
                 let lines = gen_lines(250_000);
 
-                stream::iter_ok(lines).map(|line| line.unwrap_or(String::new())).forward(writer).map(drop)
+                stream::iter_ok(lines)
+                    .map(|line| line.unwrap_or(String::new()))
+                    .forward(writer)
+                    .map(drop)
             })
             .map_err(log_error);
 
