@@ -1,5 +1,4 @@
 
-use exonum::storage::{ProofListIndex, MemoryDB, Database};
 use exonum::crypto::{HashStream, Hash, HASH_SIZE, hash};
 use byteorder::LittleEndian;
 use bytes::ByteOrder;
@@ -7,48 +6,29 @@ use test::Bencher;
 
 const LIST_TAG: u8 = 0x3;
 
-#[test]
-fn proof_list_index() {
-
-    let db = MemoryDB::new();
-
-    let mut fork = db.fork();
-
-    let mut list: ProofListIndex<_, u32> = ProofListIndex::new("list", &mut fork);
-
-    list.push(1);
-    list.push(4398);
-    list.push(10);
-    list.push(55);
-    list.push(123);
-    list.push(30);
-
-    let proof =    list.get_proof(5);
-    let merkle_root = list.merkle_root();
-
-    assert!(proof.validate(merkle_root, 6).is_ok());
-
-    println!("merkle root {:?}", merkle_root);
-    println!("proof {:#?}", proof);
-}
-
-
 #[bench]
 fn list_hash_stream(b: &mut Bencher) {
-    let hash = hash(b"some data for hash");
-
     b.iter(|| {
-        list_hash_stream_impl(5, hash);
+        hasher(list_hash_stream_impl);
     })
 }
+
 
 #[bench]
 fn list_hash_array(b: &mut Bencher) {
-    let hash = hash(b"some data for hash");
-
     b.iter(|| {
-        list_hash_array_impl(5, hash);
+        hasher(list_hash_array_impl);
     })
+}
+
+fn hasher<F>(f: F)
+    where F:Fn(u64, Hash) -> Hash  {
+    for i in 0..10_000 {
+        let mut bytes_to_hash = [0; 4];
+        LittleEndian::write_u32(&mut bytes_to_hash, i);
+        let hash = hash(&bytes_to_hash);
+        f(5, hash);
+    }
 }
 
 fn list_hash_stream_impl(len:u64, root: Hash) -> Hash {

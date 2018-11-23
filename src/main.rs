@@ -18,7 +18,6 @@ extern crate num;
 extern crate openssl;
 extern crate tokio;
 extern crate tokio_retry;
-extern crate exonum;
 extern crate test;
 
 use std::io;

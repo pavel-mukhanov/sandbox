@@ -17,7 +17,7 @@ use tokio_retry::{
 };
 
 use crate::client_server::ConnectionPool2;
-use tokio_codec::LinesCodec;
+use tokio::codec::LinesCodec;
 
 lazy_static! {
     static ref POOL: Mutex<HashMap<SocketAddr, mpsc::Sender<String>>> = Mutex::new(HashMap::new());

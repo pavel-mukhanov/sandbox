@@ -13,7 +13,7 @@ use tokio::net::TcpStream;
 
 use crate::codecs::log_error;
 use std::sync::{atomic::AtomicUsize, Arc, RwLock};
-use tokio_codec::LinesCodec;
+use tokio::codec::LinesCodec;
 
 #[derive(Clone, Debug)]
 pub struct ConnectionPool2 {
