@@ -1,7 +1,6 @@
-
-use exonum::crypto::{HashStream, Hash, HASH_SIZE, hash};
 use byteorder::LittleEndian;
 use bytes::ByteOrder;
+use exonum::crypto::{hash, Hash, HashStream, HASH_SIZE};
 use test::Bencher;
 
 const LIST_TAG: u8 = 0x3;
@@ -13,7 +12,6 @@ fn list_hash_stream(b: &mut Bencher) {
     })
 }
 
-
 #[bench]
 fn list_hash_array(b: &mut Bencher) {
     b.iter(|| {
@@ -22,7 +20,9 @@ fn list_hash_array(b: &mut Bencher) {
 }
 
 fn hasher<F>(f: F)
-    where F:Fn(u64, Hash) -> Hash  {
+where
+    F: Fn(u64, Hash) -> Hash,
+{
     for i in 0..10_000 {
         let mut bytes_to_hash = [0; 4];
         LittleEndian::write_u32(&mut bytes_to_hash, i);
@@ -31,7 +31,7 @@ fn hasher<F>(f: F)
     }
 }
 
-fn list_hash_stream_impl(len:u64, root: Hash) -> Hash {
+fn list_hash_stream_impl(len: u64, root: Hash) -> Hash {
     let mut len_bytes = [0; 8];
     LittleEndian::write_u64(&mut len_bytes, len);
 
@@ -42,7 +42,7 @@ fn list_hash_stream_impl(len:u64, root: Hash) -> Hash {
         .hash()
 }
 
-pub fn list_hash_array_impl(len:u64, root: Hash) -> Hash {
+pub fn list_hash_array_impl(len: u64, root: Hash) -> Hash {
     let mut hash_bytes = [0u8; 9 + HASH_SIZE];
 
     hash_bytes[0] = LIST_TAG;

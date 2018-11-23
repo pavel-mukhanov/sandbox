@@ -16,9 +16,9 @@ extern crate lazy_static;
 extern crate exonum;
 extern crate num;
 extern crate openssl;
+extern crate test;
 extern crate tokio;
 extern crate tokio_retry;
-extern crate test;
 
 use std::io;
 use std::io::BufRead;
