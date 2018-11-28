@@ -26,3 +26,8 @@ hex = "0.3.2"
 exonum = { path = "../exonum/exonum" }
 
 external = { path = "external"}
+
+
+#[[bin]]
+#name = "proof"
+#path = "src/proof.rs"
