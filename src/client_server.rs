@@ -95,18 +95,15 @@ impl Node {
                             println!("line {:?}", line);
 
                             Ok(())
-                        })
-                        .and_then(|_| {
+                        }).and_then(|_| {
                             println!("stream has ended");
                             Ok(())
-                        })
-                        .map_err(log_error);
+                        }).map_err(log_error);
 
                     tokio::spawn(fut);
 
                     Ok(())
-                })
-                .map_err(log_error);
+                }).map_err(log_error);
 
             tokio::run(server);
         });
@@ -131,8 +128,7 @@ impl Node {
                     .map(|line| line.unwrap_or(String::new()))
                     .forward(writer)
                     .map(drop)
-            })
-            .map_err(log_error);
+            }).map_err(log_error);
 
         tokio::run(connect);
     }
