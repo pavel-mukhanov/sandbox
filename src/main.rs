@@ -33,12 +33,12 @@ use futures::{Future, Sink};
 
 use crate::client_server::ConnectionPool2;
 use crate::codecs::{log_error, Node};
-use crate::proof::hasher;
+use crate::hash_bench::hasher;
 
 mod client_server;
 mod codecs;
 mod crypto;
 mod future_send;
+mod hash_bench;
 mod proof;
 mod traits;
-

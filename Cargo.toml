@@ -30,4 +30,4 @@ external = { path = "external"}
 
 #[[bin]]
 #name = "proof"
-#path = "src/proof.rs"
+#path = "src/hash_bench.rs"
