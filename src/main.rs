@@ -40,4 +40,5 @@ mod codecs;
 mod crypto;
 mod future_send;
 mod proof;
+mod traits;
 
