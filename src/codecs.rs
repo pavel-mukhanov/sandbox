@@ -135,7 +135,8 @@ impl Node {
                     .map_err(log_error)
                     .into_future()
                     .map(drop)
-            }).map(drop);
+            })
+            .map(drop);
 
         tokio::spawn(fut);
         tokio::spawn(sender);
@@ -163,7 +164,8 @@ impl Node {
                     line,
                     &"127.0.0.1:9000".parse().unwrap(),
                 )),
-            }.map_err(log_error);
+            }
+            .map_err(log_error);
 
             tokio::spawn(fut);
             Ok(())

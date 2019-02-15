@@ -52,7 +52,7 @@ fn test_connect() {
     /*
     node2.listen(&address2);
     thread::sleep(Duration::from_millis(200));
-    
+
     node2.connect(&address1);
     node2.connect(&address1);
     node1.connect(&address2); */
@@ -95,15 +95,18 @@ impl Node {
                             println!("line {:?}", line);
 
                             Ok(())
-                        }).and_then(|_| {
+                        })
+                        .and_then(|_| {
                             println!("stream has ended");
                             Ok(())
-                        }).map_err(log_error);
+                        })
+                        .map_err(log_error);
 
                     tokio::spawn(fut);
 
                     Ok(())
-                }).map_err(log_error);
+                })
+                .map_err(log_error);
 
             tokio::run(server);
         });
@@ -128,7 +131,8 @@ impl Node {
                     .map(|line| line.unwrap_or(String::new()))
                     .forward(writer)
                     .map(drop)
-            }).map_err(log_error);
+            })
+            .map_err(log_error);
 
         tokio::run(connect);
     }
