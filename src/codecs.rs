@@ -210,7 +210,3 @@ impl Node {
 pub fn into_failure<E: StdError + Sync + Send + 'static>(error: E) -> failure::Error {
     failure::Error::from_boxed_compat(Box::new(error))
 }
-
-pub fn log_error<E: Display>(error: E) {
-    println!("An error occurred: {}", error)
-}

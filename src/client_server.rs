@@ -11,9 +11,9 @@ use tokio::io::{self, AsyncRead};
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 
-use crate::codecs::log_error;
 use std::sync::{atomic::AtomicUsize, Arc, RwLock};
 use tokio::codec::LinesCodec;
+use std::fmt::Display;
 
 #[derive(Clone, Debug)]
 pub struct ConnectionPool2 {
@@ -27,11 +27,6 @@ impl ConnectionPool2 {
             id: Arc::new(AtomicUsize::new(0)),
             peers: Arc::new(RwLock::new(HashMap::new())),
         }
-    }
-
-    pub fn add_peer(&self, address: &SocketAddr, sender: mpsc::Sender<String>) {
-        let mut peers = self.peers.write().expect("ConnectionPool write lock");
-        peers.insert(*address, sender);
     }
 }
 
@@ -149,4 +144,8 @@ fn gen_lines(n: usize) -> Vec<Result<String, io::Error>> {
     }
 
     res
+}
+
+pub fn log_error<E: Display>(error: E) {
+    println!("An error occurred: {}", error)
 }

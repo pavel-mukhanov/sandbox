@@ -26,20 +26,6 @@ macro_rules! concat_keys {
     });
 }
 
-
-macro_rules! foo {
-    ($type:expr, $x:expr) => (
-        println!("mode X: {}", $type)
-    );
-}
-
-
-
-#[test]
-fn foo_macros() {
-    foo!(2 + 3, 3);
-}
-
 #[test]
 fn concat_keys() {
     use crate::BinaryKey;
@@ -58,11 +44,9 @@ fn concat_keys() {
 
 #[test]
 fn concat_keys_default() {
-    use crate::BinaryKey;
-    use smallvec::SmallVec;
 
-    let key1 = vec![1,2,3];
-    let key2 = vec![3,2,1];
+    let _key1 = vec![1,2,3];
+    let _key2 = vec![3,2,1];
 
 //    let res = concat_keys!(key1, key2);
 
