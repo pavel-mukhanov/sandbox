@@ -27,6 +27,7 @@ mod db;
 //mod crypto;
 #[macro_use]
 mod macros;
+mod traits;
 
 pub trait BinaryKey: ToOwned {
     /// Returns the size of the serialized key in bytes.
@@ -58,7 +59,6 @@ impl BinaryKey for Vec<u8> {
         buffer.to_vec()
     }
 }
-
 
 #[derive(Clone)]
 struct Foo {
@@ -96,7 +96,7 @@ mod tests {
         let mut buf = vec![0; 4];
         BigEndian::write_u32(&mut buf, 0_i32.wrapping_add(i32::min_value()) as u32);
         dbg!(i32::min_value() as u32);
-//    dbg!(buf);
+        //    dbg!(buf);
 
         //BigEndian::$write_method(buffer, self.wrapping_add($itype::min_value()) as $utype);
 
@@ -113,11 +113,11 @@ mod tests {
         dbg!(n);
 
         if n == 1 {
-            return 1
+            return 1;
         } else if n % 2 == 0 {
-            return puzzle(n / 2)
+            return puzzle(n / 2);
         } else {
-            return puzzle(3 * n + 1)
+            return puzzle(3 * n + 1);
         }
     }
 }

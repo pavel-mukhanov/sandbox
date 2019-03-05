@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use std::cell::RefCell;
-
+use std::collections::HashMap;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -9,23 +8,21 @@ struct Foo {
 }
 
 impl AsRef<u32> for Foo {
-
     fn as_ref(&self) -> &u32 {
         &self.inner
     }
 }
 
-
 #[allow(dead_code)]
 struct DB {
-    data: HashMap<u16, Vec<u8>>
+    data: HashMap<u16, Vec<u8>>,
 }
 
 impl DB {
     #[allow(dead_code)]
     fn new() -> Self {
         Self {
-            data: HashMap::new()
+            data: HashMap::new(),
         }
     }
 
@@ -47,32 +44,27 @@ impl DB {
     }
 }
 
-
 #[test]
 fn db_basic() {
     let mut db = DB::new();
 
     db.put(1, vec![1]);
 
-
     let val = db.get_mut(&1);
     let val = *val.borrow_mut();
-
 
     dbg!(val);
 }
 
 #[test]
 fn simple_reborrow() {
-    let mut borrow_tree = (0, (1, (3,4)), (2, (5,6)));
+    let mut borrow_tree = (0, (1, (3, 4)), (2, (5, 6)));
 
     dbg!(borrow_tree.0);
     dbg!((borrow_tree.1).1);
     dbg!(((borrow_tree.2).1).0);
 
     let t_1_1_0 = &mut ((borrow_tree.1).1).0;
-
-    let t = borrow_tree.0;
 
     *t_1_1_0 = 15;
 
@@ -96,11 +88,8 @@ fn hash_map_get_mut() {
 
 #[test]
 fn borrow() {
-
-
     let foo = Foo { inner: 7u32 };
 
     println!("foo {:?}", foo);
     println!("foo as ref {:?}", foo.as_ref());
-
 }

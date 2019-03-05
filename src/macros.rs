@@ -31,11 +31,11 @@ fn concat_keys() {
     use crate::BinaryKey;
     use smallvec::SmallVec;
 
-    let key1 = vec![1,2,3];
-    let key2 = vec![3,2,1];
+    let key1 = vec![1, 2, 3];
+    let key2 = vec![3, 2, 1];
 
     let res = concat_keys!(Vec, key1, key2);
-    let res_sv: SmallVec<[u8; 6]>  = concat_keys!(SmallVec, key1, key2);
+    let res_sv: SmallVec<[u8; 6]> = concat_keys!(SmallVec, key1, key2);
 
     let res_sv = res_sv.as_ref();
     let res = res.as_slice();
@@ -44,11 +44,10 @@ fn concat_keys() {
 
 #[test]
 fn concat_keys_default() {
+    let _key1 = vec![1, 2, 3];
+    let _key2 = vec![3, 2, 1];
 
-    let _key1 = vec![1,2,3];
-    let _key2 = vec![3,2,1];
+    //    let res = concat_keys!(key1, key2);
 
-//    let res = concat_keys!(key1, key2);
-
-//    dbg!(res);
+    //    dbg!(res);
 }
