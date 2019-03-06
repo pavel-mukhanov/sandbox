@@ -1,4 +1,4 @@
-//#![feature(test)]
+#![feature(unboxed_closures)]
 
 extern crate base64;
 extern crate byteorder;

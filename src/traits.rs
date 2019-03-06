@@ -1,5 +1,7 @@
+use std::fmt::Debug;
+
 trait Foo {
-    fn check(&self);
+    fn check(&self) where Self: Debug;
 }
 
 struct Bar {}
@@ -29,20 +31,58 @@ fn reference_trait() {
     ref_bar(&bar);
 }
 
+struct FooUnsized<T: ?Sized> {
+    foo: T
+}
+
+impl <T> FooUnsized<T> {
+    fn uniform(&self) {
+        println!("fucking magic");
+    }
+}
+
+impl <T> Foo for FooUnsized<T> {
+    fn check(&self) {
+        println!("impl foo check");
+    }
+}
 
 #[test]
-fn trait_object() {
+fn unsized_fun() {
+    let foo_sized = FooUnsized { foo: [1u8,2,3,4] };
+    let foo_unsized: &FooUnsized<_> = &foo_sized;
+    for &i in foo_unsized.foo.iter() {
+        print!("{}", i);
+    }
+    println!("");
 
-    fn static_dispatch<T: Foo>(obj: T) {
-        let ref_to_t = &obj;
+    fn foo<T: Foo>(obj: &T) {
 
-        let cast = ref_to_t as &Foo;
-
-        let coerce: &Foo = ref_to_t;
+        obj.check();
     }
 
-    fn dynamic_dispatch(obj: &Foo) {
+    foo(foo_unsized);
 
-    }
+//    foo_unsized.uniform();
+
+    FooUnsized::uniform(foo_unsized);
 
 }
+
+trait SizedFoo {
+
+}
+
+impl SizedFoo for Bar {
+
+}
+
+#[test]
+fn sized() {
+
+    let b = Bar {};
+
+    let s: &SizedFoo = &b;
+
+}
+
