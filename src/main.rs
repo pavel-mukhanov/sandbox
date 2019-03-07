@@ -29,6 +29,8 @@ mod db;
 mod macros;
 mod traits;
 
+mod refderef;
+
 pub trait BinaryKey: ToOwned {
     /// Returns the size of the serialized key in bytes.
     fn size(&self) -> usize;

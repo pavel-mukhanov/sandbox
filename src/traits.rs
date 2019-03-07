@@ -4,6 +4,7 @@ trait Foo {
     fn check(&self) where Self: Debug;
 }
 
+#[derive(Debug)]
 struct Bar {}
 
 //impl Foo for Bar {
@@ -31,6 +32,7 @@ fn reference_trait() {
     ref_bar(&bar);
 }
 
+#[derive(Debug)]
 struct FooUnsized<T: ?Sized> {
     foo: T
 }
@@ -56,7 +58,7 @@ fn unsized_fun() {
     }
     println!("");
 
-    fn foo<T: Foo>(obj: &T) {
+    fn foo<T: Foo + Debug>(obj: &T) {
 
         obj.check();
     }
