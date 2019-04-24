@@ -25,6 +25,9 @@ foreign-types-shared = "0.1.1"
 base64 = "0.9.3"
 hex = "0.3.2"
 smallvec = "0.6"
+procs  = { path = "procs", version = "0.1.0"}
+protobuf = "2.5.0"
+color-backtrace = "0.1"
 #exonum = "0.10.2"
 #exonum = { path = "../exonum/exonum" }
 

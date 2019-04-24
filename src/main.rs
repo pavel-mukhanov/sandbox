@@ -1,4 +1,6 @@
 #![feature(unboxed_closures)]
+#![feature(proc_macro_hygiene)]
+#![feature(concat_idents)]
 
 extern crate base64;
 extern crate byteorder;
@@ -27,9 +29,9 @@ mod db;
 //mod crypto;
 #[macro_use]
 mod macros;
+mod experimental;
+mod graph;
 mod traits;
-
-mod refderef;
 
 pub trait BinaryKey: ToOwned {
     /// Returns the size of the serialized key in bytes.
@@ -76,7 +78,7 @@ fn main() {
     dbg!(keys);
 }
 
-#[cfg(Test)]
+#[cfg(test)]
 mod tests {
     #[test]
     fn byteorder() {
@@ -121,5 +123,11 @@ mod tests {
         } else {
             return puzzle(3 * n + 1);
         }
+    }
+
+    #[test]
+    fn color_backtrace() {
+        color_backtrace::install();
+        assert!(false);
     }
 }

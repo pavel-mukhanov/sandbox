@@ -1,7 +1,7 @@
 // lib.rs
 pub fn bar<P>(
     // Error won't happen if "bar" is not generic
-    _baz: P
+    _baz: P,
 ) {
     hide_foo()();
 }
