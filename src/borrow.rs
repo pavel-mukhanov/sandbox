@@ -1,32 +1,28 @@
-use std::collections::HashMap;
-use std::collections::BTreeMap;
-use std::io::Write;
-use std::io::Read;
-use std::fmt::Debug;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::fmt::{Error, Formatter};
+use std::io::Read;
+use std::io::Write;
 use std::rc::Rc;
 
 struct Fork {
     value: String,
 }
 
-trait Snapshot {
-
-}
+trait Snapshot {}
 
 impl Fork {
     fn value(&self) -> &String {
         &self.value
     }
-    fn set_value(&mut self, value:String) {
+    fn set_value(&mut self, value: String) {
         self.value = value
     }
 }
 
-impl Snapshot for Fork {
-
-}
+impl Snapshot for Fork {}
 
 impl AsRef<Snapshot> for Fork {
     fn as_ref(&self) -> &(dyn Snapshot + 'static) {
@@ -36,12 +32,10 @@ impl AsRef<Snapshot> for Fork {
 }
 
 struct MigrationSnapshot {
-    fork: Rc<RefCell<Fork>>
+    fork: Rc<RefCell<Fork>>,
 }
 
-impl Snapshot for MigrationSnapshot {
-
-}
+impl Snapshot for MigrationSnapshot {}
 
 impl MigrationSnapshot {
     fn fork(&self) -> Rc<RefCell<Fork>> {
@@ -60,12 +54,11 @@ impl MigrationSnapshot {
 }
 
 impl<'a> BaseIndex<&'a mut Fork> {
-
     /// Inserts the key-value pair into the index. Both key and value may be of *any* types.
     pub fn put<K, V>(&mut self, key: &K, value: V)
-        where
-            K: StorageKey,
-            V: StorageValue,
+    where
+        K: StorageKey,
+        V: StorageValue,
     {
         self.set_index_type();
         let key = self.prefixed_key(key);
@@ -81,7 +74,9 @@ impl AsRef<Snapshot> for MigrationSnapshot {
 
 #[test]
 fn test_impl_as_ref() {
-    let fork =  Rc::new(RefCell::new(Fork { value: "Val!".to_string() }));
+    let fork = Rc::new(RefCell::new(Fork {
+        value: "Val!".to_string(),
+    }));
 
     let snapshot1 = MigrationSnapshot { fork: fork.clone() };
     let snapshot2 = MigrationSnapshot { fork: fork.clone() };
@@ -92,4 +87,3 @@ fn test_impl_as_ref() {
 
     println!("snapshot value {:?}", snapshot2.value());
 }
-

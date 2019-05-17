@@ -1,7 +1,11 @@
 #![feature(unboxed_closures)]
 #![feature(proc_macro_hygiene)]
 #![feature(concat_idents)]
+#![feature(vec_remove_item)]
+#![feature(nll)]
 
+#[macro_use]
+extern crate intrusive_collections;
 extern crate base64;
 extern crate byteorder;
 extern crate bytes;
@@ -15,23 +19,22 @@ extern crate hex;
 extern crate lazy_static;
 extern crate num;
 extern crate openssl;
-//extern crate test;
 extern crate tokio;
 extern crate tokio_retry;
 
 extern crate smallvec;
 
-//mod client_server;
-//mod codecs;
 mod db;
-//mod hash_bench;
-//mod proof;
-//mod crypto;
 #[macro_use]
 mod macros;
 mod experimental;
 mod graph;
+mod intrusive;
+mod pins;
 mod traits;
+
+use serde::{Deserialize, Serialize};
+use serde_derive::Deserialize;
 
 pub trait BinaryKey: ToOwned {
     /// Returns the size of the serialized key in bytes.
@@ -106,23 +109,6 @@ mod tests {
 
         let res = BigEndian::read_u32(&buf);
         dbg!(res);
-    }
-
-    #[test]
-    fn test_recursion() {
-        puzzle(17);
-    }
-
-    fn puzzle(n: u32) -> u32 {
-        dbg!(n);
-
-        if n == 1 {
-            return 1;
-        } else if n % 2 == 0 {
-            return puzzle(n / 2);
-        } else {
-            return puzzle(3 * n + 1);
-        }
     }
 
     #[test]
