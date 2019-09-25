@@ -6,9 +6,6 @@ edition = "2018"
 
 [dependencies]
 futures = "0.1"
-tokio = "0.1.7"
-tokio-timer = "0.2.5"
-tokio-codec = "0.1.0"
 env_logger = "0.4.1"
 log = "0.3.6"
 rand = "0.5.0-pre.0"
@@ -26,23 +23,18 @@ base64 = "0.9.3"
 hex = "0.3.2"
 smallvec = "0.6"
 procs  = { path = "procs", version = "0.1.0"}
-protobuf = "2.5.0"
 color-backtrace = "0.1"
 serde = "1.0.90"
 serde_derive ="1.0.90"
 ifmt = "0.1.1"
-#exonum = "0.10.2"
-exonum = { path = "../exonum/exonum" }
-exonum-merkledb = { path = "../exonum/components/merkledb" }
-exonum-crypto = { path = "../exonum/components/crypto" }
 intrusive-collections = "0.7.8"
-
+nom = "5.0.0"
 external = { path = "external"}
-
-
-#[[bin]]
-#name = "proof"
-#path = "src/hash_bench.rs"
+secret-tree = "0.1.1"
+sodiumoxide = "0.2.2"
+itertools = "0.8.0"
+snow = "0.6.0"
+protobuf = { version = "2.8.0", features = ["with-serde"] }
 
 [dev-dependencies]
 criterion = "0.2"
