@@ -1,17 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use base64;
-    use hex;
-    use openssl::pkey::*;
-    use openssl::rsa::*;
-    use openssl::symm::Cipher;
-
-    use secret_tree::{SEED_LEN, SecretTree, Name};
     use rand::thread_rng;
-    use sodiumoxide::crypto::sign::{Seed, keypair_from_seed};
-    use sodiumoxide::crypto::kx::{Seed as SeedKx, keypair_from_seed as keypair_from_seed_kx, gen_keypair};
+    use secret_tree::{Name, SecretTree, };
+    use snow::{params::NoiseParams, Builder};
     use sodiumoxide::crypto::hash;
-    use snow::{Builder, params::NoiseParams};
+    use sodiumoxide::crypto::kx::{
+        gen_keypair, keypair_from_seed as keypair_from_seed_kx, Seed as SeedKx,
+    };
+    use sodiumoxide::crypto::sign::{keypair_from_seed, Seed};
     use std::collections::BTreeMap;
 
     #[test]
@@ -20,29 +16,31 @@ mod tests {
         let mut buffer = [0_u8; 32];
         tree.child(Name::new("validator")).fill(&mut buffer);
         let seed = Seed::from_slice(&buffer).unwrap();
-        let (pk, sk) = keypair_from_seed(&seed);
+        let (_pk, _sk) = keypair_from_seed(&seed);
 
         tree.child(Name::new("identity")).fill(&mut buffer);
         let seed = SeedKx::from_slice(&buffer).unwrap();
         let (pk, sk) = keypair_from_seed_kx(&seed);
 
-        dbg!(pk, sk);
+        dbg!(pk.0, sk.0);
     }
 
     #[test]
     fn noise_with_sodium_kx() {
         let params: NoiseParams = "Noise_XX_25519_ChaChaPoly_SHA256".parse().unwrap();
-        let (pk, sk) = gen_keypair();
+        let (_pk, sk) = gen_keypair();
 
         let mut h_i = Builder::new(params.clone())
             .local_private_key(sk.as_ref())
-            .build_initiator().unwrap();
+            .build_initiator()
+            .unwrap();
 
         let (pk, sk) = gen_keypair();
 
         let mut h_r = Builder::new(params)
             .local_private_key(sk.as_ref())
-            .build_responder().unwrap();
+            .build_responder()
+            .unwrap();
 
         let mut buf = [0u8; 1024];
         let mut buf2 = [0u8; 1024];

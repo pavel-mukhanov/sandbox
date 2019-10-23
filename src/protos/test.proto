@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+message Person {
+    string name = 1;
+    int32 id = 2;
+    string email = 3;
+    repeated City city = 4;
+    map<int32, int32> vals = 6;
+}
+
+message City {
+    string name = 1;
+    google.protobuf.Any details = 2;
+    oneof maybe_value {
+        bytes value = 4;
+        google.protobuf.Empty no_value = 5;
+    }
+}

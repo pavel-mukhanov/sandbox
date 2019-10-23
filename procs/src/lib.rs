@@ -1,8 +1,9 @@
 extern crate proc_macro;
 
-// This is always necessary to get the `TokenStream` typedef.
-
 use proc_macro::TokenStream;
+use syn::{DeriveInput, parse_macro_input, AttributeArgs, ItemFn};
+use quote::quote;
+use darling::FromMeta;
 
 #[proc_macro]
 pub fn say_hello(_input: TokenStream) -> TokenStream {
@@ -10,4 +11,33 @@ pub fn say_hello(_input: TokenStream) -> TokenStream {
     // To enforce correctness in macros which don't take input,
     // you may want to add `assert!(_input.to_string().is_empty());`.
     "println!(\"Hello, world!\")".parse().unwrap()
+}
+
+#[derive(Debug, Default, FromMeta)]
+#[darling(default)]
+struct MacroArgs {
+    source: String,
+}
+
+#[proc_macro_attribute]
+pub fn say_hello_attr(attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = parse_macro_input!(attrs as AttributeArgs);
+    let input: DeriveInput = syn::parse(input).unwrap();
+
+    let args = match MacroArgs::from_list(&attr_args) {
+        Ok(v) => v,
+        Err(e) => {
+            panic!(format!("{:?}", e))
+        }
+    };
+
+    // Build the output, possibly using quasi-quotation
+    let expanded = quote! {
+        struct Hi {
+
+        }
+    };
+
+    // Hand the output tokens back to the compiler
+    expanded.into()
 }
