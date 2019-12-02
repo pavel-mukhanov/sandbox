@@ -15,6 +15,7 @@ num = "0.2.0"
 bytes = "0.4.8"
 clap = "2.32.0"
 tokio-retry = "0.2.0"
+tokio = "0.1"
 lazy_static = "1.1.0"
 failure = "0.1.2"
 futures-cpupool = "0.1.8"
@@ -36,7 +37,10 @@ sodiumoxide = "0.2.2"
 itertools = "0.8.0"
 snow = "0.6.0"
 protobuf = { version = "2.8.1", features = ["with-serde"] }
-
+libp2p = "0.12.0"
+structopt = { version = "0.3", default-features = false }
+paste = "0.1"
+rocksdb = "0.13.0"
 
 [dev-dependencies]
 criterion = "0.2"
@@ -48,3 +52,7 @@ path = "benches/bench.rs"
 
 [build-dependencies]
 protoc-rust = "2.7.0"
+
+[[bin]]
+name = "node"
+path = "src/p2p/node.rs"

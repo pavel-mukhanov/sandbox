@@ -81,4 +81,47 @@ mod tests {
     struct Hello {
 
     }
+
+
+    macro_rules! make_a_struct_and_getters {
+    ($name:ident { $( ($field:ident, $upper:ident)),* }) => {
+        paste::item! {
+                $(
+                    pub fn [<$name _ $field>]() -> &'static str {
+                        $name::<$upper>();
+                        "s"
+                    }
+                )*
+        }
+    }
+}
+
+    fn test_insert<S:KeyTransform>() {
+
+    }
+
+    trait KeyTransform {
+
+    }
+
+    enum Hash {}
+    enum Raw {}
+
+    impl KeyTransform for Hash {
+
+    }
+
+    impl KeyTransform for Raw {}
+
+    #[test]
+    fn test_paste() {
+        make_a_struct_and_getters!(test_insert { (raw, Raw), (hash, Hash) });
+
+
+        test_insert_raw();
+        test_insert_hash();
+
+    }
+
+
 }

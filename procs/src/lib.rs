@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{DeriveInput, parse_macro_input, AttributeArgs, ItemFn};
+use syn::{DeriveInput, parse_macro_input, AttributeArgs, };
 use quote::quote;
 use darling::FromMeta;
 
@@ -22,9 +22,9 @@ struct MacroArgs {
 #[proc_macro_attribute]
 pub fn say_hello_attr(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let attr_args = parse_macro_input!(attrs as AttributeArgs);
-    let input: DeriveInput = syn::parse(input).unwrap();
+    let _input: DeriveInput = syn::parse(input).unwrap();
 
-    let args = match MacroArgs::from_list(&attr_args) {
+    let _args = match MacroArgs::from_list(&attr_args) {
         Ok(v) => v,
         Err(e) => {
             panic!(format!("{:?}", e))

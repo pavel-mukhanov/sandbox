@@ -19,3 +19,6 @@ message Point {
     uint32 y = 2;
 }
 
+message BlockHeader {
+    map<string, bytes> entries = 1;
+}

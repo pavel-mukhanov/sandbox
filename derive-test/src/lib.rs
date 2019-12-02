@@ -9,6 +9,11 @@ struct Point {
     y: u32,
 }
 
+#[protobuf_convert(source = "proto::BlockHeader")]
+struct BlockHeader {
+    entries: HashMap<String, Vec<u8>>,
+}
+
 #[test]
 fn point_pb() {
     let point = Point { x: 1, y: 2 };

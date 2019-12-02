@@ -6,10 +6,15 @@
 #![feature(nll)]
 #![feature(generators, generator_trait)]
 
+use crate::db::list_cf;
+
 mod crypto;
 mod proc;
-mod graph;
 mod proto;
+mod p2p;
 mod protos;
+mod db;
 
-fn main() {}
+fn main() {
+   list_cf();
+}
