@@ -12,8 +12,8 @@ pub trait ProtobufConvert: Sized {
 }
 
 impl<T> ProtobufConvert for Vec<T>
-    where
-        T: ProtobufConvert,
+where
+    T: ProtobufConvert,
 {
     type ProtoStruct = Vec<T::ProtoStruct>;
 
@@ -54,7 +54,7 @@ trait Conflict {
     type Type;
 }
 
-impl<T:Conflict> Conflict for Vec<T> {
+impl<T: Conflict> Conflict for Vec<T> {
     type Type = Vec<T::Type>;
 }
 
@@ -69,19 +69,12 @@ mod tests {
 
     #[test]
     fn proc_macro() {
-
-        let _ = Hi {
-
-        };
-
+        let _ = Hi {};
     }
 
     #[say_hello_attr(source = "World!")]
     #[derive(Debug)]
-    struct Hello {
-
-    }
-
+    struct Hello {}
 
     macro_rules! make_a_struct_and_getters {
     ($name:ident { $( ($field:ident, $upper:ident)),* }) => {
@@ -96,20 +89,14 @@ mod tests {
     }
 }
 
-    fn test_insert<S:KeyTransform>() {
+    fn test_insert<S: KeyTransform>() {}
 
-    }
-
-    trait KeyTransform {
-
-    }
+    trait KeyTransform {}
 
     enum Hash {}
     enum Raw {}
 
-    impl KeyTransform for Hash {
-
-    }
+    impl KeyTransform for Hash {}
 
     impl KeyTransform for Raw {}
 
@@ -117,11 +104,7 @@ mod tests {
     fn test_paste() {
         make_a_struct_and_getters!(test_insert { (raw, Raw), (hash, Hash) });
 
-
         test_insert_raw();
         test_insert_hash();
-
     }
-
-
 }

@@ -14,3 +14,6 @@ fn hide_foo() -> impl Fn() {
 fn foo() {
     // Error won't happen if "foo" isn't used in "iterate" or has generics
 }
+
+#[test]
+fn test() {}

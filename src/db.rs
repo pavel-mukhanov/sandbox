@@ -1,8 +1,7 @@
-use rocksdb::{DB, Options};
-
+use rocksdb::{Options, DB};
 
 pub fn list_cf() {
-    let path = "/Users/pavelmukhanov/work/rust/exonum/examples/cryptocurrency-advanced/backend/db2";
+    let path = "/Users/pavelmukhanov/work/rust/exonum/components/merkledb/temp_dir";
     {
         let db = DB::open_default(path).unwrap();
         db.put(b"my key", b"my value").unwrap();

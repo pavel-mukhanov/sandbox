@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use rand::thread_rng;
-    use secret_tree::{Name, SecretTree, };
+    use secret_tree::{Name, SecretTree};
     use snow::{params::NoiseParams, Builder};
     use sodiumoxide::crypto::hash;
     use sodiumoxide::crypto::kx::{

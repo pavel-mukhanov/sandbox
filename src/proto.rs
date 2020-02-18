@@ -1,8 +1,11 @@
-use failure::Error;
 use crate::protos::proof::{MapProof, OptionalEntry};
-use protobuf::{Message, parse_from_bytes, RepeatedField, CodedInputStream, ProtobufError, CodedOutputStream, UnknownFields};
-use protobuf::well_known_types::{Int32Value, StringValue};
+use failure::Error;
 use protobuf::reflect::MessageDescriptor;
+use protobuf::well_known_types::{Int32Value, StringValue};
+use protobuf::{
+    parse_from_bytes, CodedInputStream, CodedOutputStream, Message, ProtobufError, RepeatedField,
+    UnknownFields,
+};
 use std::any::Any;
 
 mod db {
@@ -14,7 +17,7 @@ mod db {
 
     #[derive(Debug, Eq, PartialEq)]
     pub struct MapProof<V> {
-        pub entries: Vec<OptionalEntry<V>>
+        pub entries: Vec<OptionalEntry<V>>,
     }
 
     impl<V> MapProof<V> {
@@ -39,8 +42,10 @@ pub trait ProtobufConvert: Sized {
     fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error>;
 }
 
-impl<V: ProtobufConvert> ProtobufConvert for db::OptionalEntry<V> where
-    V::ProtoStruct: Message {
+impl<V: ProtobufConvert> ProtobufConvert for db::OptionalEntry<V>
+where
+    V::ProtoStruct: Message,
+{
     type ProtoStruct = OptionalEntry;
 
     fn to_pb(&self) -> Self::ProtoStruct {
@@ -53,34 +58,35 @@ impl<V: ProtobufConvert> ProtobufConvert for db::OptionalEntry<V> where
     fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
         let val = parse_from_bytes(pb.get_value());
         let value = V::from_pb(val.unwrap())?;
-        Ok(db::OptionalEntry {
-            value
-        })
+        Ok(db::OptionalEntry { value })
     }
 }
 
-impl <V:ProtobufConvert> ProtobufConvert for db::MapProof<V> {
+impl<V: ProtobufConvert> ProtobufConvert for db::MapProof<V> {
     type ProtoStruct = MapProof;
 
     fn to_pb(&self) -> Self::ProtoStruct {
         let mut proof = MapProof::new();
 
-        let entries = self.entries().iter().map(|entry| {
-            entry.to_pb()
-        }).collect::<Vec<_>>();
+        let entries = self
+            .entries()
+            .iter()
+            .map(|entry| entry.to_pb())
+            .collect::<Vec<_>>();
 
         proof.set_entries(RepeatedField::from(entries));
         proof
     }
 
     fn from_pb(pb: Self::ProtoStruct) -> Result<Self, Error> {
-        let entries = pb.get_entries().iter().cloned().map(|entry| {
-            ProtobufConvert::from_pb(entry).unwrap()
-        }).collect::<Vec<db::OptionalEntry<V>>>();
+        let entries = pb
+            .get_entries()
+            .iter()
+            .cloned()
+            .map(|entry| ProtobufConvert::from_pb(entry).unwrap())
+            .collect::<Vec<db::OptionalEntry<V>>>();
 
-        Ok(db::MapProof {
-            entries
-        })
+        Ok(db::MapProof { entries })
     }
 }
 
@@ -127,15 +133,12 @@ impl ProtobufConvert for String {
 //    }
 //}
 
-
-
-
 #[cfg(test)]
 mod tests {
-    use crate::protos::test::{Person, City};
-    use protobuf::{Message, parse_from_bytes, RepeatedField};
-    use protobuf::well_known_types::{Empty, Any};
     use crate::proto::{db, ProtobufConvert};
+    use crate::protos::test::{City, Person};
+    use protobuf::well_known_types::{Any, Empty};
+    use protobuf::{parse_from_bytes, Message, RepeatedField};
 
     #[test]
     fn proto() {
@@ -161,9 +164,7 @@ mod tests {
 
     #[test]
     fn map_proof() {
-        let _entry = db::OptionalEntry {
-          value: "String",
-        };
+        let _entry = db::OptionalEntry { value: "String" };
 
         let mut entries = vec![];
 
@@ -173,9 +174,7 @@ mod tests {
             });
         }
 
-        let proof = db::MapProof {
-            entries
-        };
+        let proof = db::MapProof { entries };
 
         let pb_proof = ProtobufConvert::to_pb(&proof);
         let de_proof: db::MapProof<String> = ProtobufConvert::from_pb(pb_proof).unwrap();

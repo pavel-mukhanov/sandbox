@@ -1,9 +1,9 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use syn::{DeriveInput, parse_macro_input, AttributeArgs, };
-use quote::quote;
 use darling::FromMeta;
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, AttributeArgs, DeriveInput};
 
 #[proc_macro]
 pub fn say_hello(_input: TokenStream) -> TokenStream {
@@ -26,9 +26,7 @@ pub fn say_hello_attr(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
     let _args = match MacroArgs::from_list(&attr_args) {
         Ok(v) => v,
-        Err(e) => {
-            panic!(format!("{:?}", e))
-        }
+        Err(e) => panic!(format!("{:?}", e)),
     };
 
     // Build the output, possibly using quasi-quotation

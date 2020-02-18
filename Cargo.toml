@@ -41,6 +41,7 @@ libp2p = "0.12.0"
 structopt = { version = "0.3", default-features = false }
 paste = "0.1"
 rocksdb = "0.13.0"
+typemap = "0.3.3"
 
 [dev-dependencies]
 criterion = "0.2"
@@ -56,3 +57,6 @@ protoc-rust = "2.7.0"
 [[bin]]
 name = "node"
 path = "src/p2p/node.rs"
+
+[workspace]
+members = ["derive-test"]
